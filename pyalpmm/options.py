@@ -1,8 +1,10 @@
+
  # -*- coding: utf-8 -*-
 
 import pyalpmm_raw as p
 
 from tools import CriticalException
+from events import Events
 
 class OptionsException(CriticalException):
     pass
@@ -14,6 +16,8 @@ class ConfigOptions:
 
     # neither "user" nor "root"
     rights = None
+
+    events = Events()
 
     serverurl_template = "ftp.hosteurope.de/mirror/ftp.archlinux.org/__repo__/os/i686/"
     availible_repositories = ["core", "extra", "community"]

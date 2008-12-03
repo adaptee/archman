@@ -11,6 +11,56 @@ from pyalpmm.tools import AskUser, CriticalException
 
 import pyalpmm_raw as p
 
+      
+class MMacmanEvents(Events):     
+    
+    def log(self, *v):
+        pass    
+            
+    def ProgressDownload(self, fn, transfered, total):
+        pass
+    
+    def ProgressInstall(self, pkgname, percent, howmany, remain):        
+        pass
+       
+    def ProgressRemove(self, pkgname, percent, howmany, remain):        
+        pass
+       
+    def ProgressUpgrade(self, pkgname, percent, howmany, remain):        
+        pass
+       
+    def ProgressConflict(self, pkgname, percent, howmany, remain):        
+        pass
+       
+    def ProgressDownloadTotal(self, total):
+        pass
+    
+    def StartResolvingDependencies(self):
+        print "Resolving Dependencies..."
+        
+    def StartCheckingInterConflicts(self):
+        print "Checking Inter-Conflicts..."
+        
+    def StartRetrievingPackage(self, repo):
+        print "Retrieving from %s" % repo
+    
+    def StartUpgradingPackage(self, pkg):
+        print "Upgrading: %s" % pkg
+    
+    def StartRemovingPackage(self, pkg):
+        print "Removing: %s" % pkg
+        
+    def StartInstallingPackage(self, pkg):
+        print "Installing: %s"  % pkg
+    
+    def StartCheckingPackageIntegrity(self):
+        print "Start checking package integrity..."
+        
+    def StartCheckingFileConflicts(self):
+        print "Start checking file conflicts..."
+        
+
+
 parser = OptionParser()
 parser.add_option("-y", "--update", dest="update", action="store_true")
 parser.add_option("-S", "--sync", dest="sync", action="store_true")
@@ -23,6 +73,7 @@ parser.add_option("-R", "--remove", dest="remove", action="store_true")
 (options, args) = parser.parse_args()
 
 s = session.Session()
+s.config.events = MMacmanEvents()
 
 if options.update:
     t = DatabaseUpdateTransaction(s)
@@ -48,7 +99,8 @@ elif options.sync or options.remove:
         if options.sync and options.sysupgrade:
             t = SysUpgradeTransaction(s)
         elif options.sync or options.remove:
-            t = SyncTransaction(s) if options.sync else RemoveTransaction(s)
+            t = SyncTransaction(s) if options.sync \
+                else RemoveTransaction(s)
             t.set_targets(args)
         t.prepare()
         t.commit()

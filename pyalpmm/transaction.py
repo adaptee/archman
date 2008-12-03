@@ -18,14 +18,12 @@ class Transaction(object):
     flags, bound, targets = 0, False, None
     __backend_data = None
 
-    def __init__(self, session, events=Events()):
-        events.StartTransactionInit()
-
+    def __init__(self, session):
         if session.config.rights <> "root":
             raise TransactionError, "You must be root to initialize a transaction"
 
         self.session = session
-        self.events = events
+        self.events = self.session.config.events
  
         p.alpm_option_set_dlcb(self.callback_download_progress)
         p.alpm_option_set_totaldlcb(self.callback_download_total_progress)
@@ -39,7 +37,7 @@ class Transaction(object):
         self.pkg_search_list = self.session.db_man.get_all_packages()
         self.grp_search_list = self.session.db_man.get_all_groups()
 
-        events.DoneTransactionInit()
+        self.events.DoneTransactionInit()
 
     def release(self):
         p.alpm_trans_release()
