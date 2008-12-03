@@ -23,7 +23,7 @@ class Events:
     def __getattr__(self, name):
         if not name in self.names:
             raise KeyError, "%s is not a valid Event" % name
-        print "[e] %s" % name,
+        print "[i] event: %s" % name,
         return self.doNothing
 
     def doNothing(self, *v):

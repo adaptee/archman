@@ -43,6 +43,7 @@ class Transaction(object):
 
     def release(self):
         p.alpm_trans_release()
+        self.events.DoneTransactionDestroy()
 
     def callback_download_progress(self, fn, transfered, filecount):
         self.events.ProgressDownload(fn, transfered, filecount)

@@ -49,7 +49,7 @@ class CriticalException(BaseException):
     def __init__(self, msg):
         super(CriticalException, self).__init__(msg)
         
-        print "\nALPM said: '%s' with errno: %s" % (p.alpm_strerror(p.get_errno()), p.get_errno())   
+        #print "\nALPM said: '%s' with errno: %s" % (p.alpm_strerror(p.get_errno()), p.get_errno())   
 
 
 class UserException(BaseException):
