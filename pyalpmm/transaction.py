@@ -40,11 +40,10 @@ class Transaction(object):
         self.grp_search_list = self.session.db_man.get_all_groups()
 
         events.DoneTransactionInit()
-        
-    def __del__(self):
+
+    def release(self):
         p.alpm_trans_release()
-        self.events.DoneTransactionDestroy()
-        
+
     def callback_download_progress(self, fn, transfered, filecount):
         self.events.ProgressDownload(fn, transfered, filecount)
         
@@ -98,10 +97,17 @@ class Transaction(object):
             return self.events.AskRemoveCorruptedPackage(data1)
         else:
             return 0
-        
+
     def callback_progress(self, event, pkgname, percent, howmany, remain):
-        self.events.ProgressGeneral(event, pkgname, percent, howmany, remain)
-         
+        if event == p.PM_TRANS_PROGRESS_ADD_START:
+            self.events.ProgressInstall(pkgname, percent, howmany, remain)
+        elif event == p.PM_TRANS_PROGRESS_UPGRADE_START:
+            self.events.ProgressUpgrade(pkgname, percent, howmany, remain)
+        elif event == p.PM_TRANS_PROGRESS_REMOVE_START:
+            self.events.ProgressRemove(pkgname, percent, howmany, remain)
+        elif event == p.PM_TRANS_PROGRESS_CONFLICTS_START:
+            self.events.ProgressConflict(pkgname, percent, howmany, remain)
+            
     def add_target(self, pkg_name):
         if p.alpm_trans_addtarget(pkg_name) == -1:
             if p.get_errno() == p.PM_ERR_PKG_NOT_FOUND:
@@ -139,11 +145,15 @@ class Transaction(object):
         self.__backend_data = p.get_list_buffer_ptr()
         if p.alpm_trans_prepare(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
+            
+        if len(self.get_targets()) == 0:
+            raise TransactionError, "Nothing to be done..."
         return True
 
     def commit(self):
         if p.alpm_trans_commit(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
+            
         return True
   
     def handle_error(self, errno):
@@ -183,7 +193,6 @@ class SysUpgradeTransaction(SyncTransaction):
     def prepare(self):
         if  p.alpm_trans_sysupgrade() == -1:
             raise TransactionError, "The SystemUpgrade failed"
-            
         super(SysUpgradeTransaction, self).prepare()
 
 class DatabaseUpdateTransaction(SyncTransaction):

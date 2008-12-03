@@ -17,67 +17,17 @@ class Events:
              # transaction info
              "StartTransactionInit", "DoneTransactionInit", "DoneTransactionDestroy",
              # progress handling
-             "ProgressDownload", "ProgressDownloadTotal", "ProgressGeneral"
+             "ProgressDownload", "ProgressDownloadTotal", "ProgressGeneral",
+             "ProgressInstall", "ProgressRemove", "ProgressUpgrade", "ProgressConflict"
         )
     def __getattr__(self, name):
         if not name in self.names:
-            raise KeyError, "%s is not a valid Event"
-        print "[d] Event: %s" % name
+            raise KeyError, "%s is not a valid Event" % name
+        print "[e] %s" % name,
         return self.doNothing
 
-    def __setattr__(self, name, func):
-        if not name in self.names:
-            raise KeyError, "%s is not a valid Event"
-        setattr(self, name, func)
-
     def doNothing(self, *v):
-        pass    
-        
-        
-    def ProgressDownload(self, fn, transfered, total):
-        if transfered == 0:
-            sys.stdout.write("[i] downloading %s: " % fn)
-        else:
-            sys.stdout.write(".")
-    
-    # further wrapping to each event_id needed here
-    def ProgressGeneral(self, event_id, pkgname, percent, howmany, remain):        
-        if event_id == 3:
-            return
-            
-        if percent == 0:
-            sys.stdout.write("[i] ev_id: %s for %s" % (event_id, pkgname) )
-        elif percent == 100:
-            sys.stdout.write("finished! ev_id: %s\n" % event_id)
-        else:
-            sys.stdout.write(".")
-    
-    def ProgressDownloadTotal(self, total):
-        #print "finished file: %s" % (total+1)
-        if total == 0:
-            print "finished"
-        else:
-            pass
-    
-    
-    def StartResolvingDependencies(self):
-        print "Resolving Dependencies..."
-        
-    def StartCheckingInterConflicts(self):
-        print "Checking Inter-Conflicts..."
-        
-    def StartRetrievingPackage(self, repo):
-        print "Retrieving from %s" % repo
-    
-    def StartUpgradingPackage(self, pkg):
-        print "Upgrading: %s" % pkg
-    
-    def StartCheckingPackageIntegrity(self):
-        print "Start checking package integrity..."
-        
-    def StartCheckingFileConflicts(self):
-        print "Start checking file conflicts..."
-        
+        print v
     
     def AskInstallIgnorePkgRequired(self, pkg, req_pkg):
         if AskUser("%s wants to have %s, but it is in IgnorePkg/IgnoreGrp - proceed?" % (pkg.name, req_pkg.name)).answer == "y":
@@ -113,3 +63,46 @@ class Events:
         if AskUser("%s is corrupted - remove it?" % pkg.name).answer == "y":
             return 1
         return 0
+        
+        
+class MMacmanEvents(Events):     
+        
+    def ProgressDownload(self, fn, transfered, total):
+        if transfered == 0:
+            sys.stdout.write("[i] downloading %s: " % fn)
+        else:
+            sys.stdout.write(".")
+    
+    def ProgressGeneral(self, pkgname, percent, howmany, remain):        
+        if percent == 0:
+            sys.stdout.write("[i] ev_id: %s for %s" % (event_id, pkgname) )
+        elif percent == 100:
+            sys.stdout.write("finished! ev_id: %s\n" % event_id)
+        else:
+            sys.stdout.write(".")
+    
+    def ProgressDownloadTotal(self, total):
+        if total == 0:
+            print "finished"
+        else:
+            pass
+    
+    
+    def StartResolvingDependencies(self):
+        print "Resolving Dependencies..."
+        
+    def StartCheckingInterConflicts(self):
+        print "Checking Inter-Conflicts..."
+        
+    def StartRetrievingPackage(self, repo):
+        print "Retrieving from %s" % repo
+    
+    def StartUpgradingPackage(self, pkg):
+        print "Upgrading: %s" % pkg
+    
+    def StartCheckingPackageIntegrity(self):
+        print "Start checking package integrity..."
+        
+    def StartCheckingFileConflicts(self):
+        print "Start checking file conflicts..."
+        

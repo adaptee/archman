@@ -25,7 +25,7 @@ if sys.argv[1] in ["sync", "s"]:
     print "\nSyncing:"
     print t.get_targets()
     t.commit()
-    t.__del__()
+    t.release()
 
 elif sys.argv[1] in ["remove", "r"]:
     t = RemoveTransaction(s)
@@ -34,8 +34,8 @@ elif sys.argv[1] in ["remove", "r"]:
     print "\nRemoving:"
     print t.get_targets()
     t.commit()
-    t.__del__()
-
+    t.release()
+    
 #elif sys.argv[1] in ["upgrade", "u"]:
 #    t = UpgradeTransaction(s)
 #    t.set_targets(sys.argv[2:])
@@ -49,7 +49,7 @@ elif sys.argv[1] in ["sysupgrade", "su"]:
     print "\nSysupgrading:"    
     print ", ".join( p.name for p in t.get_targets())
     t.commit()
-    t.__del__()
+    t.release()
 
 elif sys.argv[1] in ["search", "ss", "search_desc", "ssd"]:
     fcmp = (lambda a,b: a.lower() in b.name) \
@@ -79,13 +79,9 @@ elif sys.argv[1] in ["qif", "query_for_files"]:
 elif sys.argv[1] == "update":
     t = DatabaseUpdateTransaction(s)
     t.commit()
-    t.__del__()
+    t.release()
     
 else:
     print "Mahahaauuul"
-
-# some evil magic does not call __del__ from "Transaction" at exit
-# (maybe a cycle dep, but from/to where?)
-
 
 
