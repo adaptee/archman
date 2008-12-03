@@ -19,7 +19,7 @@ class GenList(object):
         elif issubclass(other.__class__, GenList):
             self.data += other.data
         else:
-            raise TypeError("Cannot add non-derivate or non-AbstractItem-derivate to GenList: %s" % type(other))
+            raise TypeError, "Cannot add non-derivate or non-AbstractItem-derivate to GenList: %s" % type(other)
         return self
 
     def __len__(self):
