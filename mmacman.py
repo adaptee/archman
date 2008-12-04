@@ -5,9 +5,11 @@ from time import time as utime
 from random import choice
 from optparse import OptionParser
 
-from pyalpmm import session
-from pyalpmm.transaction import *
+from pyalpmm.session import Session
+from pyalpmm.transaction import SyncTransaction, RemoveTransaction, DatabaseUpdateTransaction, SysUpgradeTransaction
 from pyalpmm.tools import AskUser, CriticalException
+from pyalpmm.events import Events
+from pyalpmm.options import ConfigOptions
 
 import pyalpmm_raw as p
 
@@ -35,29 +37,35 @@ class MMacmanEvents(Events):
     def ProgressDownloadTotal(self, total):
         pass
     
+    def DatabaseUpToDate(self, repo):
+        print "[i] Database up to date: %s" % repo
+        
+    def DatabaseUpdated(self, repo):
+        print "[+] Database updated: %s" % repo
+        
     def StartResolvingDependencies(self):
-        print "Resolving Dependencies..."
+        print "[i] Resolving Dependencies..."
         
     def StartCheckingInterConflicts(self):
-        print "Checking Inter-Conflicts..."
+        print "[i] Checking Inter-Conflicts..."
         
     def StartRetrievingPackage(self, repo):
-        print "Retrieving from %s" % repo
+        print "[+] Retrieving from %s" % repo   
     
     def StartUpgradingPackage(self, pkg):
-        print "Upgrading: %s" % pkg
+        print "[+] Upgrading: %s-%s"  % (pkg.name, pkg.version)
     
     def StartRemovingPackage(self, pkg):
-        print "Removing: %s" % pkg
+        print "[+] Removing: %s-%s"  % (pkg.name, pkg.version)
         
     def StartInstallingPackage(self, pkg):
-        print "Installing: %s"  % pkg
+        print "[+] Installing: %s-%s"  % (pkg.name, pkg.version)
     
     def StartCheckingPackageIntegrity(self):
-        print "Start checking package integrity..."
+        print "[+] Checking package integrity..."
         
     def StartCheckingFileConflicts(self):
-        print "Start checking file conflicts..."
+        print "[+] Checking file conflicts..."
         
 
 
@@ -72,8 +80,10 @@ parser.add_option("-R", "--remove", dest="remove", action="store_true")
 
 (options, args) = parser.parse_args()
 
-s = session.Session()
-s.config.events = MMacmanEvents()
+import sys
+
+e = MMacmanEvents()
+s = Session(e)
 
 if options.update:
     t = DatabaseUpdateTransaction(s)

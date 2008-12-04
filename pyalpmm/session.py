@@ -13,14 +13,14 @@ class SessionException(CriticalException):
     pass
 
 class Session(object):
-    def __init__(self):
+    def __init__(self, events):
         if p.alpm_initialize() == -1:
             raise SessionException("Could not initialize session (alpm_initialize)")
 
-        self.config = ConfigOptions()
-        self.config.rights = "root" if os.getuid() == 0 else "user"
+        self.config = ConfigOptions(events)        
 
-        self.db_man = DatabaseManager()
+        self.db_man = DatabaseManager(self.config.events)
+      
         self.db_man.register("local", LocalDatabase())
         for rep in self.config.availible_repositories:
             self.db_man.register(rep, SyncDatabase(rep, self.config.get_server(rep)))

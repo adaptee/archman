@@ -23,19 +23,11 @@ class Events:
              "log"
         )
     def __getattr__(self, name):
-        if not name in self.names:
-            raise KeyError, "%s is not a valid Event" % name
-        self.log("[i] event: %s" % name, False)
-        return self.doNothing
+        if name in self.names:
+            return self.doNothing
 
     def doNothing(self, *v):
-        self.log(v)
-    
-    def log(self, s, linebreak = True):
-        if linebreak:
-            print s
-        else:
-            print s,
+        pass
     
     def AskInstallIgnorePkgRequired(self, pkg, req_pkg):
         if AskUser("%s wants to have %s, but it is in IgnorePkg/IgnoreGrp - proceed?" % (pkg.name, req_pkg.name)).answer == "y":

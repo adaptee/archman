@@ -2,9 +2,9 @@
  # -*- coding: utf-8 -*-
 
 import pyalpmm_raw as p
+import os
 
 from tools import CriticalException
-from events import Events
 
 class OptionsException(CriticalException):
     pass
@@ -15,9 +15,9 @@ class ConfigOptions:
     local_db_path = "/var/lib/pacman"
 
     # neither "user" nor "root"
-    rights = None
+    rights = "root" if os.getuid() == 0 else "user"
 
-    events = Events()
+    events = None
 
     serverurl_template = "ftp.hosteurope.de/mirror/ftp.archlinux.org/__repo__/os/i686/"
     availible_repositories = ["core", "extra", "community"]
@@ -25,9 +25,11 @@ class ConfigOptions:
     download_only = False
     force = False
 
-    def __init__(self):
+    def __init__(self, events):
         if p.alpm_option_set_dbpath(self.local_db_path) == -1:
             raise OptionsException("Could not open the database path: %s" % self.local_db_path)
+
+        self.events = events
 
         self.set_root_path(self.rootpath)
         #self.set_log_callback(p.cb_log)

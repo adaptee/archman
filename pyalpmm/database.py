@@ -8,7 +8,6 @@ import pyalpmm_raw as p
 from item import PackageItem
 from lists import PackageList, GroupList, GenList
 from tools import CriticalException
-from events import Events
 
 class DatabaseException(CriticalException):
     pass
@@ -16,8 +15,8 @@ class DatabaseException(CriticalException):
 
 class DatabaseManager(object):
     dbs = {}
-    def __init__(self, events=Events()):
-        self.events = events
+    def __init__(self, events):
+        self.events = events 
         
     def __getitem__(self, tree):
         if isinstance(tree, str):
