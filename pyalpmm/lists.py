@@ -60,6 +60,7 @@ class GenList(object):
         return "<GenList #=%s content=(%s)>" % (len(self), ", ".join("%s" % str(s) for s in self))
 
 class LazyList(object):
+    """Handles wrapping the backend lists"""
     def __init__(self, raw_list):
         self.raw_list = raw_list
 

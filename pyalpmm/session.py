@@ -19,7 +19,7 @@ class Session(object):
 
         self.config = ConfigOptions(events)        
 
-        self.db_man = DatabaseManager(self.config.events)
+        self.db_man = DatabaseManager(events)
       
         self.db_man.register("local", LocalDatabase())
         for rep in self.config.availible_repositories:

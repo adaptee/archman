@@ -85,10 +85,16 @@ import sys
 e = MMacmanEvents()
 s = Session(e)
 
+rel = False
 if options.update:
-    t = DatabaseUpdateTransaction(s)
-    t.commit()
-    t.release()
+    try:
+        t = DatabaseUpdateTransaction(s)
+        t.commit()
+        rel = True
+    except CriticalException, e:
+        print "[e] %s" % e
+    finally:
+        if rel: t.release()
 
 if options.search and options.sync:
     li = s.db_man.search_package(name=args[0])
@@ -114,8 +120,9 @@ elif options.sync or options.remove:
             t.set_targets(args)
         t.prepare()
         t.commit()
+        rel = True
     except CriticalException, e:
         print "[e] %s " % e
     finally:
-        t.release()
+        if rel: t.release()
 

@@ -14,6 +14,7 @@ class DatabaseException(CriticalException):
 
 
 class DatabaseManager(object):
+    """Each database can be accessed through self[tree] (tree could be "core", "extra"...)"""
     dbs = {}
     def __init__(self, events):
         self.events = events 
@@ -43,12 +44,14 @@ class DatabaseManager(object):
         del self.dbs[tree]
 
     def register(self, tree, db):
+        """Register a new database"""
         if issubclass(db.__class__, AbstractDatabase):
             self[tree] = db
         else:
             raise DatabaseException, "Second parameter in register() must be an AbstractDatabase successor, but is: %s" % db
 
     def update_dbs(self, dbs=None, force=False):
+        """Update all DBs or those listed in dbs"""
         iterlist = dbs if dbs else self.dbs.keys()
         out = []
         for tree in iterlist:
@@ -59,24 +62,29 @@ class DatabaseManager(object):
                     self.events.DatabaseUpToDate(tree)
                              
     def search_package(self, **kwargs):
+        """Search for a package with given properties i.e. pass name="xterm" """
         out = GenList()
         for db in self.dbs.values():
             out += db.search_package(**kwargs)
         return out
 
     def get_all_packages(self):
+        """Get all packages from all databases (this is lazy evaluated)"""
         return GenList(chain(*[self[p].get_packages() for p in self.dbs]))
 
     def get_all_groups(self):
+        """Get all groups from all databases (this is lazy evaluated)"""
         return GenList(chain(*[self[p].get_groups() for p in self.dbs]))
 
     def get_package(self, n, repo=None):
+        """Get one package by name (optional repo arg will only search in that DB)"""
         src = self.search_package(name=n) if repo is None \
             else self.dbs[repo].search_package(name=n)
         out = [x for x in src if x.name == n]
         return out[0] if len(out) > 0 else None
 
     def get_group(self, n, repo=None):
+        """Get one group by name (optional repo arg will only search in that DB)"""
         src = (self.get_all_groups() if repo is None \
             else self.dbs[repo].get_groups())
         for gr in src:

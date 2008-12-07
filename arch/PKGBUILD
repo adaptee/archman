@@ -1,0 +1,6 @@
+pkgname=pyalpmm
+pkgver=0.1
+pkgrel=1
+pkgdesc="Python ALPM Library"
+
+source=()
