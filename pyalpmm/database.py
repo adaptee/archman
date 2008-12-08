@@ -16,7 +16,10 @@ class DatabaseException(CriticalException):
 class DatabaseManager(object):
     """Each database can be accessed through self[tree] (tree could be "core", "extra"...)"""
     dbs = {}
-    def __init__(self, events):
+    def __init__(self, dbpath, events):
+        if p.alpm_option_set_dbpath(dbpath) == -1:
+            raise DatabaseException("Could not open the database path: %s" % dbpath)
+        
         self.events = events 
         
     def __getitem__(self, tree):

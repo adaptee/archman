@@ -19,11 +19,11 @@ class Session(object):
 
         self.config = ConfigOptions(events)        
 
-        self.db_man = DatabaseManager(events)
+        self.db_man = DatabaseManager(self.config.local_db_path, events)
       
         self.db_man.register("local", LocalDatabase())
-        for rep in self.config.availible_repositories:
-            self.db_man.register(rep, SyncDatabase(rep, self.config.get_server(rep)))
+        for repo, url in self.config.availible_repositories.items():
+            self.db_man.register(repo, SyncDatabase(repo, url))
 
 
     
