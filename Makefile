@@ -26,6 +26,7 @@ swigclean:
 
 archclean:
 	rm -rf arch/p* arch/src
+	rm -f pyalpmm-$(RELEASE).tgz
 
 clean: pyclean swigclean archclean
 
@@ -36,3 +37,5 @@ create_tag:
 	svn copy svn://infolexikon.de/pyalpmm/trunk \
 		 svn://infolexikon.de/pyalpmm/tags/pyalpmm-$(RELEASE) \
 		 -m "Tagging the $(RELEASE)"
+create_release:
+	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn ../tags/pyalpmm-$(RELEASE)
