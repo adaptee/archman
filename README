@@ -16,3 +16,23 @@ Not much to say, to install:
   (it's far away from a full pacman clone, 
    but i use it for testing purposes and also for every
    day tasks like mmacman -Syu)
+
+
+
+#######################################################
+#######################################################
+
+For those who are interested in playing around with it:
+
+- check "mmacman" it's the easiest way to understand the principles
+- just "make" in the trunk/ directory, then use ./mmacman 
+  or ./your_app_using_pyalpmm.py
+
+
+
+######################################################
+######################################################
+
+- There is no svn PKGBUILD (yet)
+- will be in one of the next revisions
+
