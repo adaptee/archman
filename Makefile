@@ -1,7 +1,7 @@
 all: clean  build
 
-DESTDIR="/"
-RELEASE="0.1"
+DESTDIR=/
+RELEASE=0.1
 
 build: swig
 	python setup.py build
