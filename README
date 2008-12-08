@@ -1,0 +1,18 @@
+
+########################################################
+########################################################
+
+This is the first pyalpmm release:
+
+Not much to say, to install:
+
+- go to "arch" directory
+
+- makepkg
+
+- install resulting package
+
+- use "mmacman" as u use pacman
+  (it's far away from a full pacman clone, 
+   but i use it for testing purposes and also for every
+   day tasks like mmacman -Syu)

@@ -125,4 +125,6 @@ elif options.sync or options.remove:
         print "[e] %s " % e
     finally:
         if rel: t.release()
+else:
+    print "[-] not recognised commandline options, try -h"
 
