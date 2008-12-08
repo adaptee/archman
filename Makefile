@@ -1,5 +1,8 @@
 all: clean  build
 
+DESTDIR="/"
+RELEASE="0.1"
+
 build: swig
 	python setup.py build
 	cp build/lib.linux-i686-2.6/_pyalpmm_raw.so .
@@ -21,10 +24,15 @@ swigclean:
 	rm -f pyalpmm_raw/pyalpmm_raw.py
 	rm -f pyalpmm_raw.py
 
-clean: pyclean swigclean
+archclean:
+	rm -rf arch/p* arch/src
+
+clean: pyclean swigclean archclean
 
 install:
-	python setup.py install
+	python setup.py install --root $(DESTDIR)
 
-
-
+create_tag:
+	svn copy svn://infolexikon.de/pyalpmm/trunk \
+		 svn://infolexikon.de/pyalpmm/tags/pyalpmm-$(RELEASE) \
+		 -m "Tagging the $(RELEASE)"
