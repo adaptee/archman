@@ -45,12 +45,12 @@ class FancyReason(FancyOutput):
 
 
 
-class CriticalException(BaseException):
+class CriticalError(BaseException):
     def __init__(self, msg):
-        super(CriticalException, self).__init__(msg)
+        super(CriticalError, self).__init__(msg)
         
         #print "\nALPM said: '%s' with errno: %s" % (p.alpm_strerror(p.get_errno()), p.get_errno())   
 
 
-class UserException(BaseException):
+class UserError(BaseException):
     pass

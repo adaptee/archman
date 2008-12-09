@@ -1,13 +1,7 @@
-
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import pyalpmm_raw as p
 import os
-
-from tools import CriticalException
-
-class OptionsException(CriticalException):
-    pass
 
 class ConfigOptions:
     rootpath = "/"

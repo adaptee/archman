@@ -7,7 +7,7 @@ from optparse import OptionParser
 
 from pyalpmm.session import Session
 from pyalpmm.transaction import SyncTransaction, RemoveTransaction, DatabaseUpdateTransaction, SysUpgradeTransaction
-from pyalpmm.tools import AskUser, CriticalException
+from pyalpmm.tools import AskUser, CriticalError
 from pyalpmm.events import Events
 from pyalpmm.options import ConfigOptions
 
@@ -49,7 +49,7 @@ class MMacmanEvents(Events):
     def StartCheckingInterConflicts(self):
         print "[i] Checking Inter-Conflicts..."
         
-    def StartRetrievingPackage(self, repo):
+    def StartRetrievingPackages(self, repo):
         print "[+] Retrieving from %s" % repo   
     
     def StartUpgradingPackage(self, pkg):
@@ -91,7 +91,7 @@ if options.update:
         t = DatabaseUpdateTransaction(s)
         t.commit()
         rel = True
-    except CriticalException, e:
+    except CriticalError, e:
         print "[e] %s" % e
     finally:
         if rel: t.release()
@@ -121,7 +121,7 @@ elif options.sync or options.remove:
         t.prepare()
         t.commit()
         rel = True
-    except CriticalException, e:
+    except CriticalError, e:
         print "[e] %s " % e
     finally:
         if rel: t.release()

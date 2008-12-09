@@ -19,7 +19,7 @@ class GenList(object):
         elif issubclass(other.__class__, GenList):
             self.data += other.data
         else:
-            raise TypeError, "Cannot add non-derivate or non-AbstractItem-derivate to GenList: %s" % type(other)
+            raise TypeError("Cannot add non-derivate or non-AbstractItem-derivate to GenList: %s" % type(other))
         return self
 
     def __len__(self):
@@ -30,10 +30,10 @@ class GenList(object):
             if not isinstance(i, slice) else GenList(self.data[i])
 
     def __setitem__(self, i, item):
-        raise NotImplementedError, "Cannot set item in GenList"
+        raise NotImplementedError("Cannot set item in GenList")
 
     def __delitem__(self, i):
-        raise NotImplementedError, "Cannot del item in GenList"
+        raise NotImplementedError("Cannot del item in GenList")
 
     def __iter__(self):
         for item in self.data:
@@ -53,7 +53,7 @@ class GenList(object):
                 if item.name == what:
                     return True
         else:
-            raise TypeError, "Containing check only with AbstractItem-derivate or str not: %s" % type(what)
+            raise TypeError("Containing check only with AbstractItem-derivate or str not: %s" % type(what))
         return False
 
     def __str__(self):
@@ -84,13 +84,13 @@ class LazyList(object):
     def get_one_item(self, i):
         if isinstance(i, int):
             return p.alpm_list_nth(self.raw_list, i)
-        raise KeyError, "Can only get item with an integer index"
+        raise KeyError("Can only get item with an integer index")
 
     def create_item(self, item):
         return Item.AbstractItem()
 
     def order_by(self, key):
-        raise NotImplemented, "General order_by for LazyList not availible"
+        raise NotImplementedError("General order_by for LazyList not availible")
 
     def search(self, s):
         li = GenList()

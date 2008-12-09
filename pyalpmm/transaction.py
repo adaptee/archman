@@ -3,7 +3,7 @@ import pyalpmm_raw as p
 from database import *
 from tools import AskUser
 from lists import MissList, StringList, DependencyList, SyncPackageList
-from tools import CriticalException, UserException
+from tools import CriticalError, UserError
 from item import PackageItem
 from events import Events
 
@@ -11,7 +11,7 @@ import os, sys
 
 
         
-class TransactionError(CriticalException):
+class TransactionError(CriticalError):
     pass
 
 class Transaction(object):
@@ -20,7 +20,7 @@ class Transaction(object):
 
     def __init__(self, session):
         if session.config.rights <> "root":
-            raise TransactionError, "You must be root to initialize a transaction"
+            raise TransactionError("You must be root to initialize a transaction")
 
         self.session = session
         self.events = self.session.config.events
@@ -31,8 +31,8 @@ class Transaction(object):
         if p.alpm_trans_init(self.trans_type, self.flags, self.callback_event,
                              self.callback_conv, self.callback_progress) == -1:
             if p.get_errno() == p.PM_ERR_HANDLE_LOCK:
-                raise TransactionError, "The local database is locked"
-            raise TransactionError, "Could not initialize the transaction"
+                raise TransactionError("The local database is locked")
+            raise TransactionError("Could not initialize the transaction")
         
         self.pkg_search_list = self.session.db_man.get_all_packages()
         self.grp_search_list = self.session.db_man.get_all_groups()
@@ -110,8 +110,8 @@ class Transaction(object):
     def add_target(self, pkg_name):
         if p.alpm_trans_addtarget(pkg_name) == -1:
             if p.get_errno() == p.PM_ERR_PKG_NOT_FOUND:
-                raise TransactionError, "The target: %s could not be found" % pkg_name
-            raise TransactionError, "The target: %s could not be added" % pkg_name
+                raise TransactionError("The target: %s could not be found" % pkg_name)
+            raise TransactionError("The target: %s could not be added" % pkg_name)
         return True
 
     def set_targets(self, tars):
@@ -132,7 +132,7 @@ class Transaction(object):
                 out += [t]
 
         if len(out) > 0:
-            raise TransactionError, "Not all targets could be added, the remaining are: %s" % ", ".join(out)
+            raise TransactionError("Not all targets could be added, the remaining are: %s" % ", ".join(out))
 
         self.targets = (toinstall, grps_toinstall)
         return self.targets
@@ -146,7 +146,7 @@ class Transaction(object):
             self.handle_error(p.get_errno())
             
         if len(self.get_targets()) == 0:
-            raise TransactionError, "Nothing to be done..."
+            raise TransactionError("Nothing to be done...")
         return True
 
     def commit(self):
@@ -156,7 +156,7 @@ class Transaction(object):
         return True
   
     def handle_error(self, errno):
-        raise TransactionError, "got transaction error: %s" % p.alpm_strerror(errno)
+        raise TransactionError("got transaction error: %s" % p.alpm_strerror(errno))
 
 class SyncTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_SYNC
@@ -180,7 +180,7 @@ class RemoveTransaction(Transaction):
         for item in l:
             print item
 
-        raise TransactionError, "The package(s) cannot be removed, because it would violate dependencies"
+        raise TransactionError("The package(s) cannot be removed, because it would violate dependencies")
 
 class UpgradeTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_UPGRADE
@@ -191,7 +191,7 @@ class RemoveUpgradeTransaction(Transaction):
 class SysUpgradeTransaction(SyncTransaction):
     def prepare(self):
         if  p.alpm_trans_sysupgrade() == -1:
-            raise TransactionError, "The SystemUpgrade failed"
+            raise TransactionError("The SystemUpgrade failed")
         super(SysUpgradeTransaction, self).prepare()
 
 class DatabaseUpdateTransaction(SyncTransaction):
@@ -211,5 +211,5 @@ class DatabaseUpdateTransaction(SyncTransaction):
         elif isinstance(dbs, str):
             o = self.session.db_man.update_dbs(dbs=[dbs], force=self.session.config.force)
         else:
-            raise TypeError, "The passed databases must be either a list of strings or only one string, not: %s" % dbs
+            raise TypeError("The passed databases must be either a list of strings or only one string, not: %s" % dbs)
         

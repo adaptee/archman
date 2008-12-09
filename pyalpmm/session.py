@@ -6,16 +6,16 @@ import pyalpmm_raw as p
 
 from options import ConfigOptions
 from database import DatabaseManager, LocalDatabase, SyncDatabase
-from tools import CriticalException
+from tools import CriticalError
 
 
-class SessionException(CriticalException):
+class SessionError(CriticalError):
     pass
 
 class Session(object):
     def __init__(self, events):
         if p.alpm_initialize() == -1:
-            raise SessionException("Could not initialize session (alpm_initialize)")
+            raise SessionError("Could not initialize session (alpm_initialize)")
 
         self.config = ConfigOptions(events)        
 

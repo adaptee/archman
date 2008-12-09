@@ -23,13 +23,13 @@ class AbstractItem(object):
         try:
             return self.get_info(key)
         except KeyError, e:
-            raise AttributeError, key
+            raise AttributeError(key)
             
     def __eq__(self, other):
         """Only comparing to same classinstances - to accomplish ordering"""
         if isinstance(other, self.__class__):
             return all( self.get_info(k) == other.get_info(k) for k in self.attributes )
-        raise TypeError, "Cannot compare instance of %s with %s" % (self.__class__.__name__, other.__class__.__name__)
+        raise TypeError("Cannot compare instance of %s with %s" % (self.__class__.__name__, other.__class__.__name__))
     
     def __str__(self):
         content = [ "%s='%s'" % (k, self.get_info(k)) for k in self.attributes ]
@@ -43,8 +43,8 @@ class AbstractItem(object):
         try:
             craw = getattr(p, "alpm_%s%s" % (self.cdesc, key))(self.raw_data)
         except AttributeError, e:
-            raise KeyError, "An instance of %s contains info for: %s but not: '%s'" % \
-                (self.__class__.__name__, ", ".join(self.attributes), key)
+            raise KeyError("An instance of %s contains info for: %s but not: '%s'" % \
+                (self.__class__.__name__, ", ".join(self.attributes), key))
         try:
             return self.local_map[key](craw)
         except KeyError, e:

@@ -7,9 +7,9 @@ from itertools import chain
 import pyalpmm_raw as p
 from item import PackageItem
 from lists import PackageList, GroupList, GenList
-from tools import CriticalException
+from tools import CriticalError
 
-class DatabaseException(CriticalException):
+class DatabaseError(CriticalError):
     pass
 
 
@@ -18,7 +18,7 @@ class DatabaseManager(object):
     dbs = {}
     def __init__(self, dbpath, events):
         if p.alpm_option_set_dbpath(dbpath) == -1:
-            raise DatabaseException("Could not open the database path: %s" % dbpath)
+            raise DatabaseError("Could not open the database path: %s" % dbpath)
         
         self.events = events 
         
@@ -27,22 +27,22 @@ class DatabaseManager(object):
             try:
                 return self.dbs[tree]
             except KeyError, e:
-                raise DatabaseException, "The requested db-tree '%s' is not availible" % tree
+                raise DatabaseError("The requested db-tree '%s' is not availible" % tree)
         else:
-            raise NotImplementedError, "Only string keys are allowed as tree name"
+            raise NotImplementedError("Only string keys are allowed as tree name")
 
     def __setitem__(self, tree, item):
         if isinstance(tree, slice):
-            raise NotImplementedError, "Setting a slice - no way"
+            raise NotImplementedError("Setting a slice - no way")
         elif not issubclass(item.__class__, AbstractDatabase):
-            raise TypeError, "Cannot set to non-AbstractDatabase derviate"
+            raise TypeError("Cannot set to non-AbstractDatabase derviate")
         self.dbs[tree] = item
 
     def __delitem__(self, tree):
         if isinstance(tree, slice):
-            raise NotImplementedError, "Deleting a slice-index - alright?!"
+            raise NotImplementedError("Deleting a slice-index - alright?!")
         elif not tree in self.dbs:
-            raise KeyError, "'%s' is not a known db-tree name" % tree
+            raise KeyError("'%s' is not a known db-tree name" % tree)
 
         del self.dbs[tree]
 
@@ -51,7 +51,7 @@ class DatabaseManager(object):
         if issubclass(db.__class__, AbstractDatabase):
             self[tree] = db
         else:
-            raise DatabaseException, "Second parameter in register() must be an AbstractDatabase successor, but is: %s" % db
+            raise DatabaseError("Second parameter in register() must be an AbstractDatabase successor, but is: %s" % db)
 
     def update_dbs(self, dbs=None, force=False):
         """Update all DBs or those listed in dbs"""
@@ -119,12 +119,12 @@ class SyncDatabase(AbstractDatabase):
         self.tree = tree
         self.db = p.alpm_db_register_sync(self.tree)
         if p.alpm_db_setserver(self.db, url) == -1:
-            raise DatabaseException, "Could not connect database: %s to server: %s" % (tree, url)
+            raise DatabaseError("Could not connect database: %s to server: %s" % (tree, url))
 
     def update(self, force = False):
         r = p.alpm_db_update(force, self.db) 
         if r < 0:
-            raise DatabaseException, "Database '%s' could not be updated" % self.tree
+            raise DatabaseError("Database '%s' could not be updated" % self.tree)
         elif r == 1:
             return False
         return True
