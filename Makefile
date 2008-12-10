@@ -11,9 +11,6 @@ swig:
 	swig -python pyalpmm_raw/pyalpmm_raw.i
 	cp pyalpmm_raw/pyalpmm_raw.py .
 
-unlockdb:
-	$([[ -x /var/lib/pacman/db.lck [] && rm -rf /var/lib/pacman/db.lck)
-
 pyclean:
 	rm -rf build MANIFEST
 	rm -f pyalpmm/*.pyc pyalpmm/*.py~

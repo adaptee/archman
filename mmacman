@@ -6,7 +6,8 @@ from random import choice
 from optparse import OptionParser
 
 from pyalpmm.session import Session
-from pyalpmm.transaction import SyncTransaction, RemoveTransaction, DatabaseUpdateTransaction, SysUpgradeTransaction
+from pyalpmm.transaction import SyncTransaction, RemoveTransaction
+from pyalpmm.transaction import DatabaseUpdateTransaction, SysUpgradeTransaction
 from pyalpmm.tools import AskUser, CriticalError
 from pyalpmm.events import Events
 from pyalpmm.options import ConfigOptions
@@ -83,18 +84,18 @@ parser.add_option("-R", "--remove", dest="remove", action="store_true")
 import sys
 
 e = MMacmanEvents()
-s = Session(e)
+c = ConfigOptions(e)
+s = Session(c)
+t = None
 
-rel = False
 if options.update:
     try:
         t = DatabaseUpdateTransaction(s)
         t.commit()
-        rel = True
     except CriticalError, e:
         print "[e] %s" % e
     finally:
-        if rel: t.release()
+        if t: t.release()
 
 if options.search and options.sync:
     li = s.db_man.search_package(name=args[0])
@@ -120,11 +121,10 @@ elif options.sync or options.remove:
             t.set_targets(args)
         t.prepare()
         t.commit()
-        rel = True
     except CriticalError, e:
         print "[e] %s " % e
     finally:
-        if rel: t.release()
+        if t: t.release()
 else:
     print "[-] not recognised commandline options, try -h"
 

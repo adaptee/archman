@@ -22,12 +22,6 @@ class ConfigOptions:
 
     def __init__(self, events):
         self.events = events
-
-        self.set_root_path(self.rootpath)
         
     def get_server(self, treename):
         return self.serverurl_template.replace("__repo__",treename)
-
-    def set_root_path(self, path):
-        p.alpm_option_set_root(path)
-        self.rootpath = path
