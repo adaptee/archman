@@ -120,6 +120,8 @@ elif options.sync or options.remove:
                 else RemoveTransaction(s)
             t.set_targets(args)
         t.prepare()
+        print "[i] Processing the following packages:"
+        print "[i]   %s" % (", ".join("%s-%s" % (p.name, p.version) for p in t.get_targets()))
         t.commit()
     except CriticalError, e:
         print "[e] %s " % e
