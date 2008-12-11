@@ -17,32 +17,32 @@ import pyalpmm_raw as p
       
 class MMacmanEvents(Events):     
     
-    def log(self, *v):
+    def log(self, **v):
         pass    
             
-    def ProgressDownload(self, fn, transfered, total):
+    def ProgressDownload(self, **kw):
         pass
     
-    def ProgressInstall(self, pkgname, percent, howmany, remain):        
+    def ProgressInstall(self, **kw):        
         pass
        
-    def ProgressRemove(self, pkgname, percent, howmany, remain):        
+    def ProgressRemove(self, **kw):        
         pass
        
-    def ProgressUpgrade(self, pkgname, percent, howmany, remain):        
+    def ProgressUpgrade(self, **kw):        
         pass
        
-    def ProgressConflict(self, pkgname, percent, howmany, remain):        
+    def ProgressConflict(self, **kw):        
         pass
        
-    def ProgressDownloadTotal(self, total):
+    def ProgressDownloadTotal(self, **kw):
         pass
     
-    def DatabaseUpToDate(self, repo):
-        print "[i] Database up to date: %s" % repo
+    def DatabaseUpToDate(self, **kw):
+        print "[i] Database up to date: %s" % kw["repo"]
         
-    def DatabaseUpdated(self, repo):
-        print "[+] Database updated: %s" % repo
+    def DatabaseUpdated(self, **kw):
+        print "[+] Database updated: %s" % kw["repo"]
         
     def StartResolvingDependencies(self):
         print "[i] Resolving Dependencies..."
@@ -50,17 +50,17 @@ class MMacmanEvents(Events):
     def StartCheckingInterConflicts(self):
         print "[i] Checking Inter-Conflicts..."
         
-    def StartRetrievingPackages(self, repo):
-        print "[+] Retrieving from %s" % repo   
+    def StartRetrievingPackages(self, **kw):
+        print "[+] Retrieving from %s" % kw["repo"]
     
-    def StartUpgradingPackage(self, pkg):
-        print "[+] Upgrading: %s-%s"  % (pkg.name, pkg.version)
+    def StartUpgradingPackage(self, **kw):
+        print "[+] Upgrading: %s-%s"  % (kw["pkg"].name, kw["pkg"].version)
     
-    def StartRemovingPackage(self, pkg):
-        print "[+] Removing: %s-%s"  % (pkg.name, pkg.version)
+    def StartRemovingPackage(self, **kw):
+        print "[+] Removing: %s-%s"  % (kw["pkg"].name, kw["pkg"].version)
         
-    def StartInstallingPackage(self, pkg):
-        print "[+] Installing: %s-%s"  % (pkg.name, pkg.version)
+    def StartInstallingPackage(self, **kw):
+        print "[+] Installing: %s-%s"  % (kw["pkg"].name, kw["pkg"].version)
     
     def StartCheckingPackageIntegrity(self):
         print "[+] Checking package integrity..."

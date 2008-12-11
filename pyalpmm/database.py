@@ -60,9 +60,9 @@ class DatabaseManager(object):
         for tree in iterlist:
             if issubclass(self.dbs[tree].__class__, SyncDatabase):                         
                 if self.dbs[tree].update(force):
-                    self.events.DatabaseUpdated(tree)
+                    self.events.DatabaseUpdated(repo=tree)
                 else:
-                    self.events.DatabaseUpToDate(tree)
+                    self.events.DatabaseUpToDate(repo=tree)
                              
     def search_package(self, **kwargs):
         """Search for a package with given properties i.e. pass name="xterm" """

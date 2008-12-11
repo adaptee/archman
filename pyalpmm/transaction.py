@@ -44,10 +44,10 @@ class Transaction(object):
         self.events.DoneTransactionDestroy()
 
     def callback_download_progress(self, fn, transfered, filecount):
-        self.events.ProgressDownload(fn, transfered, filecount)
+        self.events.ProgressDownload(filename=fn, transfered=transfered, filecount=filecount)
         
     def callback_download_total_progress(self, total):
-        self.events.ProgressDownloadTotal(total)
+        self.events.ProgressDownloadTotal(total=total)
         
     def callback_event(self, event, data1, data2):
         if event == p.PM_TRANS_EVT_CHECKDEPS_START: 
@@ -59,53 +59,53 @@ class Transaction(object):
         elif event == p.PM_TRANS_EVT_INTERCONFLICTS_START:
             self.events.StartCheckingInterConflicts()
         elif event == p.PM_TRANS_EVT_ADD_START:
-            self.events.StartInstallingPackage(PackageItem(data1))
+            self.events.StartInstallingPackage(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_EVT_ADD_DONE:
-            self.events.DoneInstallingPackage(PackageItem(data1))
+            self.events.DoneInstallingPackage(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_EVT_REMOVE_START:
-            self.events.StartRemovingPackage(PackageItem(data1))
+            self.events.StartRemovingPackage(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_EVT_REMOVE_DONE:
-            self.events.DoneRemovingPackage(PackageItem(data1))
+            self.events.DoneRemovingPackage(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_EVT_UPGRADE_START:
-            self.events.StartUpgradingPackage(PackageItem(data1))
+            self.events.StartUpgradingPackage(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_EVT_UPGRADE_DONE:
-            self.events.DoneUpgradingPackage(PackageItem(data1), PackageItem(data2))
+            self.events.DoneUpgradingPackage(pkg=PackageItem(data1), from_pkg=PackageItem(data2))
         elif event == p.PM_TRANS_EVT_INTEGRITY_START:
             self.events.StartCheckingPackageIntegrity()
         elif event == p.PM_TRANS_EVT_RETRIEVE_START:
-            self.events.StartRetrievingPackages(data1)
+            self.events.StartRetrievingPackages(repo=data1)
         else:
             pass
 
     def callback_conv(self, event, data1, data2, data3):
         if event == p.PM_TRANS_CONV_INSTALL_IGNOREPKG:
             if data2:
-                return self.events.AskInstallIgnorePkgRequired(PackageItem(data1), PackageItem(data2))
-            return self.events.AskInstallIgnorePkg(PackageItem(data1))
+                return self.events.AskInstallIgnorePkgRequired(pkg=PackageItem(data1), req_pkg=PackageItem(data2))
+            return self.events.AskInstallIgnorePkg(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_CONV_LOCAL_NEWER:
             if self.session.config.download_only:
                 return 1
-            return self.events.AskUpgradeLocalNewer(PackageItem(data1))
+            return self.events.AskUpgradeLocalNewer(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_CONV_REMOVE_HOLDPKG:
-            return self.events.AskRemoveHoldPkg(PackageItem(data1))
+            return self.events.AskRemoveHoldPkg(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_CONV_REPLACE_PKG:
-            return self.events.AskReplacePkg(PackageItem(data1), PackageItem(data2), data3)
+            return self.events.AskReplacePkg(pkg=PackageItem(data1), rep_pkg=PackageItem(data2), repo=data3)
         elif event == p.PM_TRANS_CONV_CONFLICT_PKG:
-            return self.events.AskRemoveConflictingPackage(data1, data2)
+            return self.events.AskRemoveConflictingPackage(pkg=data1, conf_pkg=data2)
         elif event == p.PM_TRANS_CONV_CORRUPTED_PKG:
-            return self.events.AskRemoveCorruptedPackage(data1)
+            return self.events.AskRemoveCorruptedPackage(pkg=data1)
         else:
             return 0
 
     def callback_progress(self, event, pkgname, percent, howmany, remain):
         if event == p.PM_TRANS_PROGRESS_ADD_START:
-            self.events.ProgressInstall(pkgname, percent, howmany, remain)
+            self.events.ProgressInstall(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
         elif event == p.PM_TRANS_PROGRESS_UPGRADE_START:
-            self.events.ProgressUpgrade(pkgname, percent, howmany, remain)
+            self.events.ProgressUpgrade(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
         elif event == p.PM_TRANS_PROGRESS_REMOVE_START:
-            self.events.ProgressRemove(pkgname, percent, howmany, remain)
+            self.events.ProgressRemove(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
         elif event == p.PM_TRANS_PROGRESS_CONFLICTS_START:
-            self.events.ProgressConflict(pkgname, percent, howmany, remain)
+            self.events.ProgressConflict(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
             
     def add_target(self, pkg_name):
         if p.alpm_trans_addtarget(pkg_name) == -1:
@@ -172,15 +172,6 @@ class RemoveTransaction(Transaction):
 
         self.pkg_search_list = self.session.db_man["local"].get_packages()
         self.grp_search_list = self.session.db_man["local"].get_groups()
-
-    def handle_unsatisfied_dependencies(self, errno, ptr_data):
-        data = p.get_list_from_ptr(ptr_data)
-        l = MissList(data)
-        print "the package cannot be uninstalled, it is required by other packages:"
-        for item in l:
-            print item
-
-        raise TransactionError("The package(s) cannot be removed, because it would violate dependencies")
 
 class UpgradeTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_UPGRADE
