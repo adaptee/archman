@@ -8,7 +8,7 @@ from optparse import OptionParser
 from pyalpmm.session import Session
 from pyalpmm.transaction import SyncTransaction, RemoveTransaction
 from pyalpmm.transaction import DatabaseUpdateTransaction, SysUpgradeTransaction
-from pyalpmm.tools import AskUser, CriticalError
+from pyalpmm.tools import AskUser, CriticalError, FancyPackage
 from pyalpmm.events import Events
 from pyalpmm.options import ConfigOptions
 
@@ -71,13 +71,20 @@ class MMacmanEvents(Events):
 
 
 parser = OptionParser()
-parser.add_option("-y", "--update", dest="update", action="store_true")
-parser.add_option("-S", "--sync", dest="sync", action="store_true")
-parser.add_option("-u", "--sysupgrade", dest="sysupgrade", action="store_true")
-parser.add_option("-s", "--search", dest="search", action="store_true")
-parser.add_option("-Q", "--query", dest="query", action="store_true")
-parser.add_option("-i", "--info", dest="info", action="store_true")
-parser.add_option("-R", "--remove", dest="remove", action="store_true")
+parser.add_option("-y", "--update", dest="update", action="store_true",
+                  help="Update all Databases")
+parser.add_option("-S", "--sync", dest="sync", action="store_true",
+                  help="Synchronise action (action based on SyncDatabases) (Install package from the internet)")
+parser.add_option("-u", "--sysupgrade", dest="sysupgrade", action="store_true",
+                  help="Perform a global system upgrade")
+parser.add_option("-s", "--search", dest="search", action="store_true",
+                  help="Search package in SyncDatabases")
+parser.add_option("-Q", "--query", dest="query", action="store_true",
+                  help="Query action (action based on LocalDatabase)")
+parser.add_option("-i", "--info", dest="info", action="store_true",
+                  help="Get info for some package")
+parser.add_option("-R", "--remove", dest="remove", action="store_true",
+                  help="Remove the given packages from the system")
 
 (options, args) = parser.parse_args()
 
@@ -98,18 +105,21 @@ if options.update:
         if t: t.release()
 
 if options.search and options.sync:
-    li = s.db_man.search_package(name=args[0])
+    #li = s.db_man.search_package(repo=s.db_man.sync_dbs.keys(), name=args[0])
+    li = s.db_man.search_local_package(name=args[0])
     print "[i] Searchresults:"
     for p in li:
         print "[i] %s-%s " % (p.name, p.version)
         print "       %s" % p.desc
 
-elif options.query and options.info:
-    res = s.db_man.get_package(args[0], repo="local")
-    if res:
-        print res.__fancy_str__()
+elif (options.query or options.sync) and options.info:
+    #res = s.db_man.get_package(args[0], repo=self.db_man.local_dbs.keys() if options.query else self.db_man.sync_dbs.keys())
+    if options.query:
+        res = s.db_man.get_local_package(args[0])
     else:
-        print "[-] not found"
+        res = s.db_man.get_sync_package(args[0])
+    
+    print FancyPackage(res) if res else "[-] not found"
 
 elif options.sync or options.remove:
     try:

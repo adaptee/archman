@@ -16,6 +16,9 @@ class DatabaseError(CriticalError):
 class DatabaseManager(object):
     """Each database can be accessed through self[tree] (tree could be "core", "extra"...)"""
     dbs = {}
+    local_dbs = {}
+    sync_dbs = {}
+    
     def __init__(self, dbpath, events):
         if p.alpm_option_set_dbpath(dbpath) == -1:
             raise DatabaseError("Could not open the database path: %s" % dbpath)
@@ -44,12 +47,17 @@ class DatabaseManager(object):
         elif not tree in self.dbs:
             raise KeyError("'%s' is not a known db-tree name" % tree)
 
+
         del self.dbs[tree]
 
     def register(self, tree, db):
         """Register a new database"""
         if issubclass(db.__class__, AbstractDatabase):
             self[tree] = db
+            if tree == "local":
+                self.local_dbs = {"local": db}
+            else:
+                self.sync_dbs = dict((k,x) for k,x in self.dbs.items() if issubclass(x.__class__, SyncDatabase))
         else:
             raise DatabaseError("Second parameter in register() must be an AbstractDatabase successor, but is: %s" % db)
 
@@ -64,13 +72,18 @@ class DatabaseManager(object):
                 else:
                     self.events.DatabaseUpToDate(repo=tree)
                              
-    def search_package(self, **kwargs):
-        """Search for a package with given properties i.e. pass name="xterm" """
+    def search_package(self, repo=None, **kwargs):
+        """Search for a package (in the given repos) with given properties 
+           i.e. pass name="xterm" """
         out = GenList()
-        for db in self.dbs.values():
+        for db in (self.dbs.values() if not repo else (repo if isinstance(repo, (tuple, list)) else [repo])):
             out += db.search_package(**kwargs)
         return out
-
+    def search_local_package(self, **kwargs):
+        return self.search_package(repo=self.local_dbs.keys(), **kwargs)
+    def search_sync_package(self, **kwargs):
+        return self.search_package(repo=self.sync_dbs.keys(), **kwargs)
+        
     def get_all_packages(self):
         """Get all packages from all databases (this is lazy evaluated)"""
         return GenList(chain(*[self[p].get_packages() for p in self.dbs]))
@@ -80,12 +93,20 @@ class DatabaseManager(object):
         return GenList(chain(*[self[p].get_groups() for p in self.dbs]))
 
     def get_package(self, n, repo=None):
-        """Get one package by name (optional repo arg will only search in that DB)"""
+        """Return first occurence of package by name (optional repo arg will only search in that DB)"""
         src = self.search_package(name=n) if repo is None \
             else self.dbs[repo].search_package(name=n)
-        out = [x for x in src if x.name == n]
-        return out[0] if len(out) > 0 else None
-
+        for pkg in (x for x in src if x.name == n):
+            return pkg
+    def get_local_package(self, n):
+        for repo in self.local_dbs.keys():
+            ret = self.get_package(n, repo=repo)
+            if ret: return ret
+    def get_sync_package(self, n):
+        for repo in self.sync_dbs.keys():
+            ret = self.get_package(n, repo=repo)
+            if ret: return ret
+         
     def get_group(self, n, repo=None):
         """Get one group by name (optional repo arg will only search in that DB)"""
         src = (self.get_all_groups() if repo is None \
