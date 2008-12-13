@@ -150,10 +150,10 @@ class Transaction(object):
         db_man = self.session.db_man
 
         for t in tars:
-            if t in self.pkg_search_list:
+            if t in (p.name for p in self.pkg_search_list):
                 self.add_target(t)
                 toinstall += [t]
-            elif t in self.grp_search_list:
+            elif t in (g.name for g in self.grp_search_list):
                 grp = db_man.get_group(t)
                 for pkg in grp.pkgs:
                     self.add_target(pkg.name)

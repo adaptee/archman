@@ -6,7 +6,7 @@ from itertools import chain
 
 import pyalpmm_raw as p
 from item import PackageItem
-from lists import PackageList, GroupList, GenList
+from lists import PackageList, GroupList
 from tools import CriticalError
 
 class DatabaseError(CriticalError):
@@ -75,10 +75,8 @@ class DatabaseManager(object):
     def search_package(self, repo=None, **kwargs):
         """Search for a package (in the given repos) with given properties 
            i.e. pass name="xterm" """
-        out = GenList()
         for db in (self.dbs.values() if not repo else (repo if isinstance(repo, (tuple, list)) else [repo])):
-            out += self[db].search_package(**kwargs)
-        return out
+            return self[db].search_package(**kwargs)
     def search_local_package(self, **kwargs):
         return self.search_package(repo=self.local_dbs.keys(), **kwargs)
     def search_sync_package(self, **kwargs):
@@ -86,11 +84,11 @@ class DatabaseManager(object):
         
     def get_all_packages(self):
         """Get all packages from all databases (this is lazy evaluated)"""
-        return GenList(chain(*[self[p].get_packages() for p in self.dbs]))
+        return chain(*[self[p].get_packages() for p in self.dbs])
 
     def get_all_groups(self):
         """Get all groups from all databases (this is lazy evaluated)"""
-        return GenList(chain(*[self[p].get_groups() for p in self.dbs]))
+        return chain(*[self[p].get_groups() for p in self.dbs])
 
     def get_package(self, n, repo=None):
         """Return first occurence of package by name (optional repo arg will only search in that DB)"""

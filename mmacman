@@ -94,16 +94,16 @@ if options.delete_lockfile:
 
 if options.update:
     try:
-        with DatabaseUpdateTransaction(session) as t:
-            t.aquire()
-            t.commit()
+        with DatabaseUpdateTransaction(session) as transobj:
+            transobj.aquire()
+            transobj.commit()
     except CriticalError as e:
         print "[e] %s" % e
 
 if options.search and options.sync:
-    li = session.db_man.search_local_package(name=args[0])
+    gen = session.db_man.search_local_package(name=args[0])
     print "[i] Searchresults:"
-    for p in li:
+    for p in gen:
         print "[P] %s-%s " % (p.name, p.version)
         print "       %s" % p.desc
 

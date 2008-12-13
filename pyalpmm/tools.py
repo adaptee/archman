@@ -55,7 +55,7 @@ class FancyPackage(FancyOutput):
         for key, val in ((x, pkg.get_info(x)) for x in pkg.all_attributes):
             if not val:
                 continue  
-            elif issubclass(val.__class__, (List.GenList, List.LazyList)):
+            elif issubclass(val.__class__, List.LazyList):
                 o += "%13s - %s\n" % (key, val) if len(val) < 8 \
                     else "%13s - | list too long - size:%s |  \n" % (key, len(val))
             else:
@@ -69,8 +69,5 @@ class CriticalError(Exception):
     def __init__(self, msg):
         super(CriticalError, self).__init__(msg)
         
-        #print "\nALPM said: '%s' with errno: %s" % (p.alpm_strerror(p.get_errno()), p.get_errno())   
-
-
 class UserError(BaseException):
     pass
