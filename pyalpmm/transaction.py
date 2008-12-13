@@ -21,7 +21,7 @@ class TransactionError(CriticalError):
         
 
 class Transaction(object):
-    flags, bound, targets = 0, False, None
+    flags, bound, targets, ready, prepared = 0, False, None, False, False
     __backend_data = None
 
     def __init__(self, session, targets = None):
@@ -49,12 +49,13 @@ class Transaction(object):
         self.grp_search_list = self.session.db_man.get_all_groups()
 
         self.events.DoneTransactionInit()
+        self.ready = True
 
         if self.targets:
             self.set_targets(self.targets)
             self.prepare()
     
-    def prepare(self):    
+    def prepare(self):   
             self.__backend_data = p.get_list_buffer_ptr()
             if p.alpm_trans_prepare(self.__backend_data) == -1:
                 self.handle_error(p.get_errno())
@@ -63,6 +64,7 @@ class Transaction(object):
                 raise TransactionError("Nothing to be done...")
             
             self.events.DoneTransactionPrepare()
+            self.prepared = True
     
     def __enter__(self):
         return self

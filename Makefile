@@ -16,7 +16,7 @@ clean:
 	rm -rf build MANIFEST pyalpmm-*.pkg.tar.gz
 	rm -f pyalpmm/*.py{c,~}
 	rm -f *{~,pyc,so} 
-	rm -f pyalpmm_raw{.py,pyalpmm_raw_wrap.c,pyalpmm_raw.py}
+	rm -f pyalpmm_raw{.py,/pyalpmm_raw_wrap.c,/pyalpmm_raw.py}
 	rm -rf arch/{release,svn}/{pyalpmm*,src,pkg} 
 
 
