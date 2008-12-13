@@ -2,6 +2,7 @@ all: clean  build
 
 DESTDIR=/
 RELEASE=0.1
+PKGREL=1
 
 build: swig
 	python setup.py build
@@ -11,21 +12,16 @@ swig:
 	swig -python pyalpmm_raw/pyalpmm_raw.i
 	cp pyalpmm_raw/pyalpmm_raw.py .
 
-pyclean:
+clean:
 	rm -rf build MANIFEST
 	rm -f pyalpmm/*.pyc pyalpmm/*.py~
 	rm -f *~ *.pyc *.so
-
-swigclean:
 	rm -f pyalpmm_raw/pyalpmm_raw_wrap.c
 	rm -f pyalpmm_raw/pyalpmm_raw.py
 	rm -f pyalpmm_raw.py
+	rm -rf arch/{release,svn}/{pyalpmm*,src,pkg} 
+	rm -f pyalpmm-*.pkg.tar.gz
 
-archclean:
-	rm -rf arch/p* arch/src
-	rm -f pyalpmm-$(RELEASE).tgz
-
-clean: pyclean swigclean archclean
 
 install:
 	python setup.py install --root $(DESTDIR)
@@ -34,5 +30,14 @@ create_tag:
 	svn copy svn://infolexikon.de/pyalpmm/trunk \
 		 svn://infolexikon.de/pyalpmm/tags/pyalpmm-$(RELEASE) \
 		 -m "Tagging the $(RELEASE)"
-create_release:
-	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn ../tags/pyalpmm-$(RELEASE)
+create_release: 
+	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn -C ../tags/ pyalpmm-$(RELEASE)
+
+
+arch_release: clean
+	cd arch/release/ && makepkg && cp pyalpmm-$(RELEASE)-$(PKGREL).pkg.tar.gz ../../
+	# Package placed in ./ please install with pacman -U
+
+arch_svn: clean
+	cd arch/svn && makepkg && cp pyalpmm-svn-*.pkg.tar.gz ../../
+	# Package placed in ./ please install with pacman -U

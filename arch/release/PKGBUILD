@@ -12,7 +12,10 @@ source=(http://static.evigo.net/infolexikon/releases/${pkgname}-${pkgver}.tgz)
 
 build() {
 	cd ${srcdir}/${pkgname}-${pkgver}
-	make
-	make install DESTDIR=${pkgdir}
-	install -D mmacman ${pkgdir}/usr/bin/mmacman
+
+	msg "Starting make..."
+
+	make || return 1
+	make install DESTDIR=${pkgdir} || return 1
+	install -D mmacman ${pkgdir}/usr/bin/mmacman || return 1
 }
