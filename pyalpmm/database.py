@@ -77,7 +77,7 @@ class DatabaseManager(object):
            i.e. pass name="xterm" """
         out = GenList()
         for db in (self.dbs.values() if not repo else (repo if isinstance(repo, (tuple, list)) else [repo])):
-            out += db.search_package(**kwargs)
+            out += self[db].search_package(**kwargs)
         return out
     def search_local_package(self, **kwargs):
         return self.search_package(repo=self.local_dbs.keys(), **kwargs)

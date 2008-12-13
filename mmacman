@@ -16,28 +16,6 @@ import pyalpmm_raw as p
 
       
 class MMacmanEvents(Events):     
-    
-    def log(self, **v):
-        pass    
-            
-    def ProgressDownload(self, **kw):
-        pass
-    
-    def ProgressInstall(self, **kw):        
-        pass
-       
-    def ProgressRemove(self, **kw):        
-        pass
-       
-    def ProgressUpgrade(self, **kw):        
-        pass
-       
-    def ProgressConflict(self, **kw):        
-        pass
-       
-    def ProgressDownloadTotal(self, **kw):
-        pass
-    
     def DatabaseUpToDate(self, **kw):
         print "[i] Database up to date: %s" % kw["repo"]
         
@@ -72,71 +50,89 @@ class MMacmanEvents(Events):
 
 parser = OptionParser()
 parser.add_option("-y", "--update", dest="update", action="store_true",
-                  help="Update all Databases")
+                  help="Update all Databases (usable standalone, or in combination with everything)")
+parser.add_option("-x", "--delete-lock", dest="delete_lockfile", action="store_true",
+                  help="Deleting the database lockfile " +
+                       "(ATTENTION - use only if you know what you are doing!" +
+                       " usable standalone and in combination with everything)")
+                  
 parser.add_option("-S", "--sync", dest="sync", action="store_true",
-                  help="Synchronise action (action based on SyncDatabases) (Install package from the internet)")
+                  help="Synchronise action (Sync package)")
 parser.add_option("-u", "--sysupgrade", dest="sysupgrade", action="store_true",
                   help="Perform a global system upgrade")
 parser.add_option("-s", "--search", dest="search", action="store_true",
                   help="Search package in SyncDatabases")
+                  
 parser.add_option("-Q", "--query", dest="query", action="store_true",
-                  help="Query action (action based on LocalDatabase)")
+                  help="Local query action")
 parser.add_option("-i", "--info", dest="info", action="store_true",
                   help="Get info for some package")
+                  
 parser.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
+                  
 
 (options, args) = parser.parse_args()
 
-import sys
+events = MMacmanEvents()
+config = ConfigOptions(events)
 
-e = MMacmanEvents()
-c = ConfigOptions(e)
-s = Session(c)
-t = None
+# uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
+#events.logfile = config.logfile
+
+session = Session(config)
+
+if options.delete_lockfile:
+    if config.rights != "root":
+        print "[e] You must be root to delete the database lockfile: %s" % config.lockfile
+        
+    if os.path.exists(config.lockfile):
+        os.unlink(config.lockfile)
+        print "[+] Successfully deleted the db_lock_file: %s" % config.lockfile
+    else:
+        print "[-] There is no need to delete the db_lock_file: %s" % config.lockfile
 
 if options.update:
     try:
-        t = DatabaseUpdateTransaction(s)
-        t.commit()
-    except CriticalError, e:
+        with DatabaseUpdateTransaction(session) as t:
+            t.aquire()
+            t.commit()
+    except CriticalError as e:
         print "[e] %s" % e
-    finally:
-        if t: t.release()
 
 if options.search and options.sync:
-    #li = s.db_man.search_package(repo=s.db_man.sync_dbs.keys(), name=args[0])
-    li = s.db_man.search_local_package(name=args[0])
+    li = session.db_man.search_local_package(name=args[0])
     print "[i] Searchresults:"
     for p in li:
-        print "[i] %s-%s " % (p.name, p.version)
+        print "[P] %s-%s " % (p.name, p.version)
         print "       %s" % p.desc
 
 elif (options.query or options.sync) and options.info:
-    #res = s.db_man.get_package(args[0], repo=self.db_man.local_dbs.keys() if options.query else self.db_man.sync_dbs.keys())
     if options.query:
-        res = s.db_man.get_local_package(args[0])
+        res = session.db_man.get_local_package(args[0])
     else:
-        res = s.db_man.get_sync_package(args[0])
+        res = session.db_man.get_sync_package(args[0])
     
     print FancyPackage(res) if res else "[-] not found"
 
-elif options.sync or options.remove:
+elif options.remove or options.sync:
+    
+    if options.remove:
+        transobj = RemoveTransaction(session, targets=args)
+    elif options.sync and not options.sysupgrade:
+        transobj = SyncTransaction(session, targets=args)
+    else:
+        transobj = SysUpgradeTransaction(session)
+    
     try:
-        if options.sync and options.sysupgrade:
-            t = SysUpgradeTransaction(s)
-        elif options.sync or options.remove:
-            t = SyncTransaction(s) if options.sync \
-                else RemoveTransaction(s)
-            t.set_targets(args)
-        t.prepare()
-        print "[i] Processing the following packages:"
-        print "[i]   %s" % (", ".join("%s-%s" % (p.name, p.version) for p in t.get_targets()))
-        t.commit()
-    except CriticalError, e:
-        print "[e] %s " % e
-    finally:
-        if t: t.release()
+        with transobj:
+            transobj.aquire()
+            print "[i] Processing packages:"
+            print "    %s" % ", ".join("%s-%s" % (x.name, x.version) for x in transobj.get_targets())
+            transobj.commit()
+    except CriticalError as e:
+        print "[e] %s" % e
+
 else:
     print "[-] not recognised commandline options, try -h"
 

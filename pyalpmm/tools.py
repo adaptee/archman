@@ -1,4 +1,4 @@
-from exceptions import BaseException
+#from exceptions import BaseException
 import time
 
 import pyalpmm_raw as p
@@ -65,7 +65,7 @@ class FancyPackage(FancyOutput):
         self.out = o
 
 
-class CriticalError(BaseException):
+class CriticalError(Exception):
     def __init__(self, msg):
         super(CriticalError, self).__init__(msg)
         

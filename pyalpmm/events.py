@@ -1,8 +1,10 @@
 import sys
+import datetime
 
 from tools import AskUser
 
 class Events:
+    last_event, logfile = None, None
     names = (# general events
              "StartCheckingDependencies", "StartCheckingFileConflicts", "StartResolvingDependencies",
              "StartCheckingInterConflicts", "StartInstallingPackage", "StartRemovingPackage",
@@ -15,21 +17,33 @@ class Events:
              # database updates
              "DatabaseUpToDate", "DatabaseUpdated",
              # transaction info
-             "DoneTransactionInit", "DoneTransactionDestroy",
+             "DoneTransactionInit", "DoneTransactionDestroy", "DoneSettingTargets", 
+             "DoneTransactionPrepare", "DoneTransactionCommit",
+             # session info
+             "StartInitSession", "DoneInitSession",
              # progress handling
              "ProgressDownload", "ProgressDownloadTotal",
              "ProgressInstall", "ProgressRemove", "ProgressUpgrade", "ProgressConflict",
              # log
-             "log"
+             "Log"
              
         )
     def __getattr__(self, name):
+        self.last_event = name
         if name in self.names:
             return self.doNothing
         raise AttributeError(name)
 
     def doNothing(self, **kw):
-        pass
+        self.Log(event=self.last_event, data=kw)
+    
+    def Log(self, **kw):
+        if self.logfile:
+            # sometimes i am just producing this: 
+            file(self.logfile, "a").write("%20s - [%25s] %s\n" % \
+                (datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                 kw["event"], 
+                 " ".join("%s: %s" % (k,v) for k,v in kw["data"].items())))
     
     def AskInstallIgnorePkgRequired(self, **kw):
         if AskUser("%s wants to have %s, but it is in IgnorePkg/IgnoreGrp - proceed?" % (kw["pkg"].name, kw["req_pkg"].name)).answer == "y":

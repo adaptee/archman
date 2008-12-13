@@ -6,7 +6,6 @@ from itertools import chain
 
 import pyalpmm_raw as p
 
-#from item import AbstractItem, PackageItem, GroupItem
 import item as Item
 
 class GenList(object):

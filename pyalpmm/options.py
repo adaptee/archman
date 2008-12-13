@@ -5,8 +5,14 @@ import os
 
 class ConfigOptions:
     rootpath = "/"
+
     logfile = "/tmp/alpm.log"
+    logging = True
+
     local_db_path = "/var/lib/pacman"
+    
+    # need this, because the lockfile is not know while instanciating ConfigOptions
+    lockfile = property(lambda s: p.alpm_option_get_lockfile()) 
 
     # neither "user" nor "root"
     rights = "root" if os.getuid() == 0 else "user"
@@ -25,5 +31,3 @@ class ConfigOptions:
     def __init__(self, events):
         self.events = events
         
-    def get_server(self, treename):
-        return self.serverurl_template.replace("__repo__",treename)

@@ -13,14 +13,11 @@ swig:
 	cp pyalpmm_raw/pyalpmm_raw.py .
 
 clean:
-	rm -rf build MANIFEST
-	rm -f pyalpmm/*.pyc pyalpmm/*.py~
-	rm -f *~ *.pyc *.so
-	rm -f pyalpmm_raw/pyalpmm_raw_wrap.c
-	rm -f pyalpmm_raw/pyalpmm_raw.py
-	rm -f pyalpmm_raw.py
+	rm -rf build MANIFEST pyalpmm-*.pkg.tar.gz
+	rm -f pyalpmm/*.py{c,~}
+	rm -f *{~,pyc,so} 
+	rm -f pyalpmm_raw{.py,pyalpmm_raw_wrap.c,pyalpmm_raw.py}
 	rm -rf arch/{release,svn}/{pyalpmm*,src,pkg} 
-	rm -f pyalpmm-*.pkg.tar.gz
 
 
 install:

@@ -13,6 +13,9 @@ class SessionError(CriticalError):
 
 class Session(object):
     def __init__(self, config):
+    
+        config.events.StartInitSession()
+    
         if p.alpm_initialize() == -1:
             raise SessionError("Could not initialize session (alpm_initialize)")
         
@@ -25,5 +28,6 @@ class Session(object):
         for repo, url in config.availible_repositories.items():
             self.db_man.register(repo, SyncDatabase(repo, url))
 
+        self.config.events.DoneInitSession()
 
     

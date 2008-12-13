@@ -24,18 +24,23 @@ class Transaction(object):
     flags, bound, targets = 0, False, None
     __backend_data = None
 
-    def __init__(self, session):
-        if session.config.rights <> "root":
-            raise TransactionError("You must be root to initialize a transaction")
-
+    def __init__(self, session, targets = None):
+        """The (abstract) Transaction, 'session' must always be a valid pyalpmm-session,
+           the optional argument 'targets' may be passed to automaticly add all 'targets'
+           to the transaction and prepare() afterwards, so only commit() remains to be called"""
         self.session = session
         self.events = self.session.config.events
- 
-        p.alpm_option_set_dlcb(self.callback_download_progress)
-        p.alpm_option_set_totaldlcb(self.callback_download_total_progress)
+        self.targets = targets
+    
+    def aquire(self):
+        if self.session.config.rights != "root":
+            raise TransactionError("You must be root to initialize a transaction")
 
-        if p.alpm_trans_init(self.trans_type, self.flags, self.callback_event,
-                             self.callback_conv, self.callback_progress) == -1:
+        p.alpm_option_set_dlcb(self.__callback_download_progress)
+        p.alpm_option_set_totaldlcb(self.__callback_download_total_progress)
+
+        if p.alpm_trans_init(self.trans_type, self.flags, self.__callback_event,
+                             self.__callback_conv, self.__callback_progress) == -1:
             if p.get_errno() == p.PM_ERR_HANDLE_LOCK:
                 raise TransactionError("The local database is locked")
             raise TransactionError("Could not initialize the transaction")
@@ -45,17 +50,32 @@ class Transaction(object):
 
         self.events.DoneTransactionInit()
 
-    def release(self):
-        p.alpm_trans_release()
-        self.events.DoneTransactionDestroy()
-
-    def callback_download_progress(self, fn, transfered, filecount):
-        self.events.ProgressDownload(filename=fn, transfered=transfered, filecount=filecount)
+        if self.targets:
+            self.set_targets(self.targets)
+            self.prepare()
+    
+    def prepare(self):    
+            self.__backend_data = p.get_list_buffer_ptr()
+            if p.alpm_trans_prepare(self.__backend_data) == -1:
+                self.handle_error(p.get_errno())
+                
+            if len(self.get_targets()) == 0:
+                raise TransactionError("Nothing to be done...")
+            
+            self.events.DoneTransactionPrepare()
+    
+    def __enter__(self):
+        return self
         
-    def callback_download_total_progress(self, total):
-        self.events.ProgressDownloadTotal(total=total)
-        
-    def callback_event(self, event, data1, data2):
+    def __exit__(self, type, value, traceback):
+        self.release()
+       
+    # those 5 methods wrap the Transaction events to the Events instance
+    def __callback_download_progress(self, fn, transfered, filecount):
+        self.events.ProgressDownload(filename=fn, transfered=transfered, filecount=filecount)        
+    def __callback_download_total_progress(self, total):
+        self.events.ProgressDownloadTotal(total=total)       
+    def __callback_event(self, event, data1, data2):
         if event == p.PM_TRANS_EVT_CHECKDEPS_START: 
             self.events.StartCheckingDependencies()
         elif event == p.PM_TRANS_EVT_FILECONFLICTS_START:
@@ -82,8 +102,7 @@ class Transaction(object):
             self.events.StartRetrievingPackages(repo=data1)
         else:
             pass
-
-    def callback_conv(self, event, data1, data2, data3):
+    def __callback_conv(self, event, data1, data2, data3):
         if event == p.PM_TRANS_CONV_INSTALL_IGNOREPKG:
             if data2:
                 return self.events.AskInstallIgnorePkgRequired(pkg=PackageItem(data1), req_pkg=PackageItem(data2))
@@ -102,8 +121,7 @@ class Transaction(object):
             return self.events.AskRemoveCorruptedPackage(pkg=data1)
         else:
             return 0
-
-    def callback_progress(self, event, pkgname, percent, howmany, remain):
+    def __callback_progress(self, event, pkgname, percent, howmany, remain):
         if event == p.PM_TRANS_PROGRESS_ADD_START:
             self.events.ProgressInstall(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
         elif event == p.PM_TRANS_PROGRESS_UPGRADE_START:
@@ -112,7 +130,12 @@ class Transaction(object):
             self.events.ProgressRemove(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
         elif event == p.PM_TRANS_PROGRESS_CONFLICTS_START:
             self.events.ProgressConflict(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
-            
+    
+    def release(self):
+        p.alpm_trans_release()
+        self.events.DoneTransactionDestroy()
+    
+       
     def add_target(self, pkg_name):
         if p.alpm_trans_addtarget(pkg_name) == -1:
             if p.get_errno() == p.PM_ERR_PKG_NOT_FOUND:
@@ -141,29 +164,20 @@ class Transaction(object):
             raise TransactionError("Not all targets could be added, the remaining are: %s" % ", ".join(out))
 
         self.targets = (toinstall, grps_toinstall)
-        return self.targets
+        self.events.DoneSettingTargets(targets=self.targets)
 
     def get_targets(self):
         return PackageList(p.alpm_trans_get_pkgs())
-
-    def prepare(self):
-        self.__backend_data = p.get_list_buffer_ptr()
-        if p.alpm_trans_prepare(self.__backend_data) == -1:
-            self.handle_error(p.get_errno())
-            
-        if len(self.get_targets()) == 0:
-            raise TransactionError("Nothing to be done...")
-        return True
-
+        
     def commit(self):
         if p.alpm_trans_commit(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
             
-        return True
+        self.events.DoneTransactionCommit()
   
     def handle_error(self, errno):
         ml = MissList(p.get_list_from_ptr(self.__backend_data))
-        raise TransactionError("got transaction error: %s" % p.alpm_strerror(errno), ml)
+        raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), ml)
 
 class SyncTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_SYNC
@@ -174,8 +188,8 @@ class SyncTransaction(Transaction):
 class RemoveTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_REMOVE
     
-    def __init__(self, session):
-        super(RemoveTransaction, self).__init__(session)
+    def __init__(self, session, targets = None):
+        super(RemoveTransaction, self).__init__(session, targets=targets)
 
         self.pkg_search_list = self.session.db_man["local"].get_packages()
         self.grp_search_list = self.session.db_man["local"].get_groups()
@@ -187,6 +201,14 @@ class RemoveUpgradeTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_REMOVEUPGRADE
 
 class SysUpgradeTransaction(SyncTransaction):
+    def __init__(self, session):
+        """For a SysUpgrade don't allow passing targets"""
+        super(SysUpgradeTransaction, self).__init__(session)
+    
+    def aquire(self):
+        super(SysUpgradeTransaction, self).aquire()
+        self.prepare()  
+        
     def prepare(self):
         if  p.alpm_trans_sysupgrade() == -1:
             raise TransactionError("The SystemUpgrade failed")
