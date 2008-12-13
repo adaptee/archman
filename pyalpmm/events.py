@@ -21,6 +21,7 @@ class Events:
              "ProgressInstall", "ProgressRemove", "ProgressUpgrade", "ProgressConflict",
              # log
              "log"
+             
         )
     def __getattr__(self, name):
         if name in self.names:

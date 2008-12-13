@@ -12,7 +12,13 @@ import os, sys
 
         
 class TransactionError(CriticalError):
-    pass
+    def __init__(self, msg, more_data = None):
+        if more_data:
+            msg += "\n"
+            for item in more_data:
+                msg += "[i] Dependency %s-%s for %s could not be satisfied" % (item.dep.name, item.dep.version, item.target)                       
+        super(TransactionError, self).__init__(msg)
+        
 
 class Transaction(object):
     flags, bound, targets = 0, False, None
@@ -156,7 +162,8 @@ class Transaction(object):
         return True
   
     def handle_error(self, errno):
-        raise TransactionError("got transaction error: %s" % p.alpm_strerror(errno))
+        ml = MissList(p.get_list_from_ptr(self.__backend_data))
+        raise TransactionError("got transaction error: %s" % p.alpm_strerror(errno), ml)
 
 class SyncTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_SYNC
