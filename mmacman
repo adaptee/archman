@@ -72,10 +72,13 @@ parser.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
                   
 
+parser.add_option("-c", "--configfile", dest="configfile", metavar="FILE",
+                  help="use given file as a config file")
+
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
-config = ConfigOptions(events)
+config = ConfigOptions(events, fn=options.configfile)
 
 # uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
 #events.logfile = config.logfile

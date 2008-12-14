@@ -1,5 +1,5 @@
 pkgname=pyalpmm-svn
-pkgver=21
+pkgver=26
 pkgrel=1
 pkgdesc="The Python ALPM high-level API"
 arch=('i686' 'x86_64')
@@ -7,6 +7,7 @@ license=('GPL')
 url="http://www.infolexikon.de/code/pyalpmm"
 depends=('python>=2.6.1')
 makedepends=('swig')
+conflicts=('pyalpmm')
 
 _svntrunk=svn://infolexikon.de/pyalpmm/trunk
 _svnmod=pyalpmm
@@ -23,4 +24,5 @@ build() {
 	make || return 1
 	make install DESTDIR=${pkgdir} || return 1
 	install -D mmacman ${pkgdir}/usr/bin/mmacman || return 1
+	install -D pyalpmm.conf ${pkgdir}/etc/pyalpmm.conf || return 1
 }

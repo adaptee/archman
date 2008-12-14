@@ -112,12 +112,13 @@ void cb_python_dl_progress_wrap(const char *filename, off_t file_xfered, off_t f
 
 %}
 
-
+/*%typemap(in) char * {
+    $1 = PyString_AsString($input);   
+}*/
 
 %typemap(out) off_t, time_t {
     $result = PyLong_FromLong((long) $1);
 }
-
 
 %typemap(in) alpm_trans_cb_event cb_event (pmtransevt_t event, void *data1, void *data2) {
     if (!PyCallable_Check($input)) {

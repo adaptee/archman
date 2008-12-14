@@ -65,6 +65,14 @@ class PackageItem(AbstractItem):
                       "builddate" : FancyDateTime, "installdate" : FancyDateTime, 
                       "depends" : List.DependencyList }
 
+    
+    #int alpm_pkg_load(const char *filename, unsigned short full, pmpkg_t **pkg);
+    @classmethod
+    def from_file(cls, fn):
+        #if p.alpm_pkg_load(fn, ???, helperfkt-need)
+        pass
+    
+
 class SyncPackageItem(PackageItem):
     attributes = ["name", "version"]
     extract = p.helper_list_getsyncpkg

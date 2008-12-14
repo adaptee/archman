@@ -20,7 +20,7 @@ class DatabaseManager(object):
     sync_dbs = {}
     
     def __init__(self, dbpath, events):
-        if p.alpm_option_set_dbpath(dbpath) == -1:
+        if p.alpm_option_set_dbpath(p.helper_get_char(dbpath)) == -1:
             raise DatabaseError("Could not open the database path: %s" % dbpath)
         
         self.events = events 
@@ -30,7 +30,7 @@ class DatabaseManager(object):
             try:
                 return self.dbs[tree]
             except KeyError, e:
-                raise DatabaseError("The requested db-tree '%s' is not availible" % tree)
+                raise DatabaseError("The requested db-tree '%s' is not available" % tree)
         else:
             raise NotImplementedError("Only string keys are allowed as tree name")
 
@@ -147,4 +147,17 @@ class SyncDatabase(AbstractDatabase):
         elif r == 1:
             return False
         return True
+
+class AURDatabase(SyncDatabase):
+    baseurl = "http://aur.archlinux.org/packages/"
+    def __init__(self):
+        pass
+  
+    def get_packages(self):
+        pass
+        
+    def get_groups(self):
+        raise NotImplementedError("There are no groups in the AUR")
+
+
 

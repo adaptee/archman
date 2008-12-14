@@ -1,10 +1,20 @@
 #from exceptions import BaseException
 import time
+import sys, os
 
 import pyalpmm_raw as p
 
-
 from pyalpmm import lists as List
+
+
+
+class PackageBuilder(object):
+    def __init__(self, pkgbuild_path_or_url):
+        if os.path.exists(pkgbuild_path_or_url) and os.chdir(os.path.dirname(pkgbuild_path_or_url)):
+             if os.system("makepkg") == 0:
+                # "pacman -U the resulting package"
+                pass
+
 
 class AskUser(object):
     def __init__(self, question, answers=["y","n"]):

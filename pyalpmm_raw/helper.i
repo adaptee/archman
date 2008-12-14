@@ -35,6 +35,18 @@ alpm_list_t *get_list_from_ptr(alpm_list_t **d){
     return *d;
 }
 
+alpm_list_t *helper_create_alpm_list(PyObject *list) {
+    int i;
+    alpm_list_t *out = NULL;
+    
+    for(i=0; i<PyList_Size(list); ++i)
+        out = alpm_list_add(out, PyString_AsString(PyList_GetItem(list, i)));
+    return out;              
+}
+
+char *helper_get_char(PyObject *str){ 
+    return PyString_AsString(str);    
+}                                     
 
 int get_errno(){
     return (int) pm_errno;

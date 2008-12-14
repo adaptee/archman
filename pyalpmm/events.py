@@ -20,7 +20,9 @@ class Events:
              "DoneTransactionInit", "DoneTransactionDestroy", "DoneSettingTargets", 
              "DoneTransactionPrepare", "DoneTransactionCommit",
              # session info
-             "StartInitSession", "DoneInitSession",
+             "StartInitSession", "DoneInitSession", "DoneApplyConfig",
+             # options
+             "DoneReadingConfigFile", "DoneSavingConfigFile",
              # progress handling
              "ProgressDownload", "ProgressDownloadTotal",
              "ProgressInstall", "ProgressRemove", "ProgressUpgrade", "ProgressConflict",
