@@ -5,6 +5,10 @@ import os
 
 from pyalpmm.tools import CriticalError
 
+class ConfigError(CriticalError):
+    pass
+
+
 class ConfigOptions:
     download_only = False
     force = False
@@ -58,10 +62,13 @@ class ConfigOptions:
 #        self.events.DoneSavingConfigFile(filename=fn or self.configfile)
 #
         
-    def read_from_file(self, fn = None):
-        import ConfigParser
+    def read_from_file(self):
+        import ConfigParser, os
+        if not os.path.exists(self.configfile):
+            raise ConfigError("The configfile could not be found: %s" % self.configfile)
+            
         config = ConfigParser.RawConfigParser()
-        config.read(fn or self.configfile)
+        config.read(self.configfile)
         for p in self.listopts:
             if config.get("general", p):
                 setattr(self, p, config.get("general", p).split(","))
@@ -70,7 +77,7 @@ class ConfigOptions:
         for k,v in config.items("repositories"):
             self.available_repositories[k] = config.get("repositories", k)
         
-        self.events.DoneReadingConfigFile(filename=(fn or self.configfile))
+        self.events.DoneReadingConfigFile(filename=(self.configfile))
         
         
         
