@@ -69,7 +69,7 @@ class ConfigOptions:
         for p in self.listopts:
             setattr(self, p, config.get("general", p).split(","))
         for p in self.pathopts:
-            setattr(self, p, config.get("paths", p).split(","))
+            setattr(self, p, config.get("paths", p))
         for k,v in config.items("repositories"):
             self.available_repositories[k] = config.get("repositories", k)
         

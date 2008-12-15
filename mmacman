@@ -75,6 +75,14 @@ parser.add_option("-R", "--remove", dest="remove", action="store_true",
 parser.add_option("-c", "--configfile", dest="configfile", metavar="FILE",
                   help="use given file as a config file")
 
+parser.add_option("-f", "--force", dest="force", action="store_true",
+                  help="force action")
+parser.add_option("-d", "--nodeps", dest="nodeps", action="store_true",
+                  help="ignore dependencies")
+#parser.add_option("
+               
+
+
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()

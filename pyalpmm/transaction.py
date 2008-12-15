@@ -174,12 +174,15 @@ class Transaction(object):
     def commit(self):
         if p.alpm_trans_commit(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
-            
+        
         self.events.DoneTransactionCommit()
   
     def handle_error(self, errno):
-        ml = MissList(p.get_list_from_ptr(self.__backend_data))
-        raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), ml)
+        if errno == 38:
+            ml = MissList(p.get_list_from_ptr(self.__backend_data))
+            raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), ml)
+        else:
+            raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno))
 
 class SyncTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_SYNC

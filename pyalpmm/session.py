@@ -18,9 +18,12 @@ class Session(object):
     
         if p.alpm_initialize() == -1:
             raise SessionError("Could not initialize session (alpm_initialize)")
-        
+       
         self.config = config        
-        p.alpm_option_set_root(p.helper_get_char(config.rootpath))
+        p.alpm_option_set_root(config.rootpath)
+        
+        if p.alpm_option_set_dbpath(config.local_db_path) == -1:
+            raise SessionError("Could not open the database path: %s" % dbpath)
         
         self.db_man = DatabaseManager(config.local_db_path[0], config.events)
       
