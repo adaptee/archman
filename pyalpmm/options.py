@@ -29,11 +29,7 @@ class ConfigOptions:
     events = None
     configfile = "/etc/pyalpmm.conf"
 
-    available_repositories = {"core" : "ftp.hosteurope.de/mirror/ftp.archlinux.org/core/os/i686/", 
-                              "extra" : "ftp.hosteurope.de/mirror/ftp.archlinux.org/extra/os/i686/",
-                              "community" : "ftp.hosteurope.de/mirror/ftp.archlinux.org/community/os/i686/",
-                              "arch-games" : "http://twilightlair.net/files/arch/games/i686",
-                              "compiz-fusion" : "http://compiz.dreamz-box.de/i686"}
+    available_repositories = {}
         
     listopts = ("holdpkg", "ignorepkg", "ignoregrp", "noupgrade", "noextract", "cachedir")
     pathopts = ("local_db_path", "rootpath", "logfile")
@@ -67,7 +63,8 @@ class ConfigOptions:
         config = ConfigParser.RawConfigParser()
         config.read(fn or self.configfile)
         for p in self.listopts:
-            setattr(self, p, config.get("general", p).split(","))
+            if config.get("general", p):
+                setattr(self, p, config.get("general", p).split(","))
         for p in self.pathopts:
             setattr(self, p, config.get("paths", p))
         for k,v in config.items("repositories"):

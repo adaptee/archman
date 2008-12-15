@@ -39,8 +39,11 @@ class Session(object):
         # applying only listoptions, because 'logfile', 'rootpath'  
         # and 'dbroot' are already set somewhere else
         for opt in self.config.listopts:
-            fn = getattr(p, "alpm_option_set_%ss" % opt)
-            fn(p.helper_create_alpm_list(getattr(self.config, opt)))
+            t = getattr(self.config, opt)
+            if t:
+                print t
+                fn = getattr(p, "alpm_option_set_%ss" % opt)
+                fn(p.helper_create_alpm_list(getattr(self.config, opt)))
         
         #p.alpm_option_set_xfercommand(const char *cmd)
         
