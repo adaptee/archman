@@ -41,9 +41,8 @@ class Session(object):
         for opt in self.config.listopts:
             t = getattr(self.config, opt)
             if t:
-                print t
                 fn = getattr(p, "alpm_option_set_%ss" % opt)
-                fn(p.helper_create_alpm_list(getattr(self.config, opt)))
+                fn(p.helper_create_alpm_list(t))
         
         #p.alpm_option_set_xfercommand(const char *cmd)
         

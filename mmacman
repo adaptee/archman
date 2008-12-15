@@ -89,7 +89,7 @@ events = MMacmanEvents()
 config = ConfigOptions(events, fn=options.configfile)
 
 # uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
-events.logfile = config.logfile
+#events.logfile = config.logfile
 
 session = Session(config)
 
