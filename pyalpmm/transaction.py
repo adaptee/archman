@@ -16,18 +16,18 @@ class TransactionError(CriticalError):
         if more_data:
             msg += "\n"
             for item in more_data:
-                msg += "[i] Dependency %s-%s for %s could not be satisfied" % (item.dep.name, item.dep.version, item.target)                       
+                msg += "\n[i] Dependency %s for %s could not be satisfied" % (item.dep.name, item.target)                       
         super(TransactionError, self).__init__(msg)
         
 
 class Transaction(object):
-    flags, bound, targets, ready, prepared = 0, False, None, False, False
+    bound, targets, ready, prepared = False, None, False, False
     __backend_data = None
 
     def __init__(self, session, targets = None):
         """The (abstract) Transaction, 'session' must always be a valid pyalpmm-session,
            the optional argument 'targets' may be passed to automaticly add all 'targets'
-           to the transaction and prepare() afterwards, so only commit() remains to be called"""
+           to the transaction, so only aquire() and commit() remains to be called"""
         self.session = session
         self.events = self.session.config.events
         self.targets = targets
@@ -39,7 +39,8 @@ class Transaction(object):
         p.alpm_option_set_dlcb(self.__callback_download_progress)
         p.alpm_option_set_totaldlcb(self.__callback_download_total_progress)
 
-        if p.alpm_trans_init(self.trans_type, self.flags, self.__callback_event,
+        print self.session.config.transaction_flags
+        if p.alpm_trans_init(self.trans_type, self.session.config.transaction_flags, self.__callback_event,
                              self.__callback_conv, self.__callback_progress) == -1:
             if p.get_errno() == p.PM_ERR_HANDLE_LOCK:
                 raise TransactionError("The local database is locked")

@@ -79,14 +79,14 @@ parser.add_option("-f", "--force", dest="force", action="store_true",
                   help="force action")
 parser.add_option("-d", "--nodeps", dest="nodeps", action="store_true",
                   help="ignore dependencies")
-#parser.add_option("
-               
-
+parser.add_option("-w", "--downloadonly", dest="download_only", action="store_true",
+                  help="only download packages")
+                  	
 
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
-config = ConfigOptions(events, fn=options.configfile)
+config = ConfigOptions(events, config_fn=options.configfile, cmd_options=options)
 
 # uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
 #events.logfile = config.logfile

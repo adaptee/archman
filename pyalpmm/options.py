@@ -13,18 +13,20 @@ class ConfigOptions:
     download_only = False
     force = False
     nodeps = False
+
+    transaction_flags = 0    
     
     holdpkg = []
     ignorepkg = []
     ignoregrp = []
     noupgrade = []
     noextract = []
-    
+    cachedir = ["/var/cache/pacman/pkg/"]
+
     rootpath = "/"
     local_db_path = "/var/lib/pacman"
     logfile = "/tmp/alpm.log"    
-    cachedir = ["/var/cache/pacman/pkg/"]
-
+    
     # need this, because the lockfile is not known while instanciating ConfigOptions
     lockfile = property(lambda s: p.alpm_option_get_lockfile()) 
 
@@ -34,15 +36,29 @@ class ConfigOptions:
     configfile = "/etc/pyalpmm.conf"
 
     available_repositories = {}
-        
+    
     listopts = ("holdpkg", "ignorepkg", "ignoregrp", "noupgrade", "noextract", "cachedir")
     pathopts = ("local_db_path", "rootpath", "logfile")
     
-    def __init__(self, events, fn = None):
+    def __init__(self, events, config_fn = None, cmd_options = None):
         self.events = events
-        if fn: self.configfile = fn 
+        
+        if config_fn: 
+            self.configfile = config_fn 
+        
         self.read_from_file()
         
+        # don't like this
+        if cmd_options:
+            if cmd_options.download_only:
+                self.download_only = cmd_options.download_only
+                self.transaction_flags |= p.PM_TRANS_FLAG_DOWNLOADONLY
+            if cmd_options.force:
+                self.force = cmd_options.force
+                self.transaction_flags |= p.PM_TRANS_FLAG_FORCE
+            if cmd_options.nodeps:
+                self.nodeps = cmd_options.nodeps
+                self.transaction_flags |= p.PM_TRANS_FLAG_NODEPS
 #       
 #    def save_to_file(self, fn = None):
 #        import ConfigParser
@@ -61,7 +77,8 @@ class ConfigOptions:
 #        config.write(file(fn or self.configfile, "w"))   
 #        self.events.DoneSavingConfigFile(filename=fn or self.configfile)
 #
-        
+    
+    # this also looks a bit "sketchy"
     def read_from_file(self):
         import ConfigParser, os
         if not os.path.exists(self.configfile):
