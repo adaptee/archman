@@ -39,7 +39,6 @@ class Transaction(object):
         p.alpm_option_set_dlcb(self.__callback_download_progress)
         p.alpm_option_set_totaldlcb(self.__callback_download_total_progress)
 
-        print self.session.config.transaction_flags
         if p.alpm_trans_init(self.trans_type, self.session.config.transaction_flags, self.__callback_event,
                              self.__callback_conv, self.__callback_progress) == -1:
             if p.get_errno() == p.PM_ERR_HANDLE_LOCK:
