@@ -172,6 +172,9 @@ class Transaction(object):
         return PackageList(p.alpm_trans_get_pkgs())
         
     def commit(self):
+        if len(self.get_targets()) == 0:
+            raise TransactionError("Nothing to be done...")
+            
         if p.alpm_trans_commit(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
         
