@@ -1,7 +1,7 @@
 all: clean  build
 
 DESTDIR=/
-RELEASE=0.1
+RELEASE=0.2
 PKGREL=1
 
 build: swig
