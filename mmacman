@@ -6,7 +6,7 @@ from random import choice
 from optparse import OptionParser, OptionGroup
 
 from pyalpmm.session import Session
-from pyalpmm.transaction import SyncTransaction, RemoveTransaction
+from pyalpmm.transaction import SyncTransaction, RemoveTransaction, UpgradeTransaction
 from pyalpmm.transaction import DatabaseUpdateTransaction, SysUpgradeTransaction
 from pyalpmm.tools import AskUser, CriticalError, FancyPackage
 from pyalpmm.events import Events
@@ -81,6 +81,13 @@ group.add_option("-s", "--search", dest="search", action="store_true",
                   help="Search package in SyncDatabases")
 parser.add_option_group(group)                  
 
+group = OptionGroup(parser, "Upgrade Actions",
+                    "-U activates the upgrade actions")                  
+group.add_option("-U", "--upgrade", dest="upgrade", action="store_true",
+                  help="Upgrade package")
+parser.add_option_group(group)                  
+
+
 group = OptionGroup(parser, "Query Actions", 
                     "-Q activates the Query Actions")         
 group.add_option("-Q", "--query", dest="query", action="store_true",
@@ -93,10 +100,6 @@ group = OptionGroup(parser, "Remove Actions",
 parser.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
                   
-
-
-
-
 
 (options, args) = parser.parse_args()
 
@@ -141,10 +144,12 @@ elif (options.query or options.sync) and options.info:
     
     print FancyPackage(res) if res else "[-] not found"
 
-elif options.remove or options.sync:
+elif options.remove or options.sync or options.upgrade:
     
     if options.remove:
         transobj = RemoveTransaction(session, targets=args)
+    elif options.upgrade:
+        transobj = UpgradeTransaction(session, targets=args)
     elif options.sync and not options.sysupgrade:
         transobj = SyncTransaction(session, targets=args)
     else:

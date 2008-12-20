@@ -64,7 +64,6 @@ class Transaction(object):
                 raise TransactionError("Nothing to be done...")
             
             self.events.DoneTransactionPrepare()
-            self.prepared = True
     
     def __enter__(self):
         return self
@@ -143,24 +142,25 @@ class Transaction(object):
             if p.get_errno() == p.PM_ERR_PKG_NOT_FOUND:
                 raise TransactionError("The target: %s could not be found" % pkg_name)
             raise TransactionError("The target: %s could not be added" % pkg_name)
-        return True
 
     def set_targets(self, tars):
         out, grps_toinstall, toinstall = [], [], []
         db_man = self.session.db_man
 
         for t in tars:
-            if t in (p.name for p in self.pkg_search_list):
-                self.add_target(t)
-                toinstall += [t]
-            elif t in (g.name for g in self.grp_search_list):
+            if t in (g.name for g in self.grp_search_list):
+                # do we need this, could we just add the group as target?
                 grp = db_man.get_group(t)
                 for pkg in grp.pkgs:
                     self.add_target(pkg.name)
-                toinstall += [grp.pkgs]
+                    toinstall += [pkg.name]
                 grps_toinstall += [grp]
             else:
-                out += [t]
+                try:
+                    self.add_target(t)
+                    toinstall += [t]
+                except TransactionError as e:
+                    out += [t]
 
         if len(out) > 0:
             raise TransactionError("Not all targets could be added, the remaining are: %s" % ", ".join(out))
