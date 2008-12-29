@@ -101,8 +101,6 @@ parser.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
                   
 
-
-
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
