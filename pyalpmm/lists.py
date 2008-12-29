@@ -73,11 +73,8 @@ class PackageList(LazyList):
         if "name" in kwargs:
             kwargs["desc"] = kwargs["name"]
         res = []
-        
         for k,v in kwargs.items():
-            for pkg in self:
-                if pkg.get_info(k).lower().find( v.lower() ) > -1:
-                    res += [pkg]
+            res += [pkg for pkg in self if pkg.get_info(k).lower().find( v.lower() ) > -1]
         return list(set(res))
 
     def order_by(self, k):
@@ -93,7 +90,7 @@ class GroupList(LazyList):
         return Item.GroupItem(raw_data)
 
     def search(self, name):
-        return (grp for grp in self if name in grp.name)
+        return (grp for grp in self if grp.name.find(name) > -1)
 
     def order_by(self, k):
         li = list(x for x in self)
