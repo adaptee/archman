@@ -70,12 +70,15 @@ class PackageList(LazyList):
         return Item.PackageItem(raw_data)
 
     def search(self, **kwargs):
-        mask = len(list(self)) * [True]
+        if "name" in kwargs:
+            kwargs["desc"] = kwargs["name"]
+        res = []
+        
         for k,v in kwargs.items():
-            for i in (i for i,x in enumerate(mask) if x):
-                if self[i].get_info(k).lower().find( v.lower() ) == -1:
-                    mask[i] = False
-        return (self[i] for i,x in enumerate(mask) if x)
+            for pkg in self:
+                if pkg.get_info(k).lower().find( v.lower() ) > -1:
+                    res += [pkg]
+        return list(set(res))
 
     def order_by(self, k):
         lst = [(v.get_info(k),v) for v in self]
@@ -83,8 +86,7 @@ class PackageList(LazyList):
         pop = heapq.heappop
         out = []
         while lst:
-            out += [pop(lst)[1]]
-        return out
+            yield pop(lst)[1]
 
 class GroupList(LazyList):
     def create_item(self, raw_data):
