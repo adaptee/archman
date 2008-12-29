@@ -21,7 +21,7 @@ class TransactionError(CriticalError):
         
 
 class Transaction(object):
-    bound, targets, ready, prepared = False, None, False, False
+    targets = None
     __backend_data = None
 
     def __init__(self, session, targets = None):

@@ -4,9 +4,13 @@ DESTDIR=/
 RELEASE=0.2
 PKGREL=1
 
+ARCH=`uname -m`
+
+
+
 build: swig
 	python setup.py build
-	cp build/lib.linux-i686-2.6/_pyalpmm_raw.so .
+	cp build/lib.linux-$(ARCH)-2.6/_pyalpmm_raw.so .
 
 swig:
 	swig -python pyalpmm_raw/pyalpmm_raw.i
@@ -18,7 +22,6 @@ clean:
 	rm -f *{~,pyc,so} 
 	rm -f pyalpmm_raw{.py,/pyalpmm_raw_wrap.c,/pyalpmm_raw.py}
 	rm -rf arch/{release,svn}/{pyalpmm*,src,pkg} 
-
 
 install:
 	python setup.py install --root $(DESTDIR)

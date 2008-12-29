@@ -35,6 +35,7 @@ class ConfigOptions:
     events = None
     configfile = "/etc/pyalpmm.conf"
 
+    main_repositories = ["core", "extra", "community"]
     available_repositories = {}
     
     listopts = ("holdpkg", "ignorepkg", "ignoregrp", "noupgrade", "noextract", "cachedir")
@@ -59,24 +60,6 @@ class ConfigOptions:
             if cmd_options.nodeps:
                 self.nodeps = cmd_options.nodeps
                 self.transaction_flags |= p.PM_TRANS_FLAG_NODEPS
-#       
-#    def save_to_file(self, fn = None):
-#        import ConfigParser
-#        config = ConfigParser.RawConfigParser()
-#        config.add_section("repositories")
-#        for k,v in self.available_repositories.items():
-#            config.set("repositories", k, v)
-#        config.set("repositories", "active_repositories", ",".join(self.available_repositories.keys()))
-#        config.add_section("paths")
-#        for p in self.pathopts:
-#            config.set("paths", p, ", ".join(getattr(self, p)))
-#        config.add_section("general")
-#        for p  in self.listopts:
-#            config.set("general", p, ",".join(getattr(self, p)))
-#        
-#        config.write(file(fn or self.configfile, "w"))   
-#        self.events.DoneSavingConfigFile(filename=fn or self.configfile)
-#
     
     # this also looks a bit "sketchy"
     def read_from_file(self):
@@ -91,6 +74,16 @@ class ConfigOptions:
                 setattr(self, p, config.get("general", p).split(","))
         for p in self.pathopts:
             setattr(self, p, config.get("paths", p))
+        
+        # reading from /etc/pacman.d/mirrorlist
+        for line in file("/etc/pacman.d/mirrorlist"):
+            if line.strip().startswith("Server"):
+                repo_tmpl = line[line.find("=")+1:].strip()
+                break
+        for repo in self.main_repositories:
+            self.available_repositories[repo] = repo_tmpl.replace("$repo", repo)
+        
+        # reading additional repo
         for k,v in config.items("repositories"):
             self.available_repositories[k] = config.get("repositories", k)
         

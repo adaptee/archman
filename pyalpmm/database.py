@@ -147,12 +147,18 @@ class SyncDatabase(AbstractDatabase):
         return True
 
 class AURDatabase(SyncDatabase):
-    baseurl = "http://aur.archlinux.org/packages/"
+    baseurl = "http://aur.archlinux.org/"
+    rpcurl = baseurl + "rpc.php?type=%(type)s&arg=%(arg)s"
     def __init__(self):
         pass
   
     def get_packages(self):
-        pass
+        # we cannot get all packages at once
+        # so we just return AURPackageList() which should wrap this ... another point: 
+        # do we really need "get_packages" in the databaseobjects??? check for kick-out! 
+        import urllib
+        res = eval(urllib.urlopen("").read())
+        
         
     def get_groups(self):
         #raise NotImplementedError("There are no groups in the AUR")
