@@ -7,7 +7,7 @@ from itertools import chain
 import pyalpmm_raw as p
 
 import lists as List
-from tools import FancySize, FancyDateTime, FancyReason
+from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType
 
 
 class AbstractItem(object):
@@ -105,7 +105,13 @@ class MissItem(AbstractItem):
     extract = p.helper_list_getmiss
     cdesc = "miss"
     local_key_map = {"dep" : DependencyItem }
-    
+
+class FileConflictItem(AbstractItem):
+    attributes = ["target", "type", "file", "ctarget"]
+    ctypes = "pmfileconflicttype_t"
+    extract = p.helper_list_getfileconflict
+    cdesc= = "fileconflict"
+    local_key_map = {"type" : FancyFileConflictType }
 
 
 GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,

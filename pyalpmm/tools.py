@@ -43,6 +43,14 @@ class FancySize(FancyOutput):
                 self.out = "%.1f %s" % (b/float(1024**i), suffixes[i])
                 break
 
+class FancyFileConflictType(FancyOutput):
+    def __init__(self, data):
+        self.raw = d = data
+        if self.raw == p.PM_FILECONFLICT_TARGET:
+            self.out = "detected file in two packages"
+        elif self.raw == p.PM_FILECONFLICT_FILESYSTEM:
+            self.out = "detected file in filesystem"
+
 class FancyDateTime(FancyOutput):
     def __init__(self, data):
         if data == 0:

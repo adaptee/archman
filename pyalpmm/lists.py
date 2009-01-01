@@ -97,6 +97,10 @@ class GroupList(LazyList):
         li.sort(lambda a,b: (a.get_info(k),b))
         return li
 
+class FileConflict(LazyList):
+    def create_item(self, raw_data):
+        return Item.FileConflictItem(raw_data)
+
 class StringList(LazyList):
     def create_item(self, raw_data):
         return str(p.helper_list_getstr(raw_data))

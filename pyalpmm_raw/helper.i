@@ -26,6 +26,10 @@ pmpkg_t *helper_list_getsyncpkg(alpm_list_t *item){
     return alpm_sync_get_pkg((pmsyncpkg_t *) alpm_list_getdata(item));
 }
 
+pmfileconflicttype_t *helper_list_getfileconflict(alpm_list_t *item){
+    return (pmfileconflicttype_t*) alpm_list_getdata(item);
+}
+
 static alpm_list_t *list_buffer = NULL;
 
 alpm_list_t **get_list_buffer_ptr(){

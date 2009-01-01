@@ -12,11 +12,20 @@ import os, sys
 
         
 class TransactionError(CriticalError):
-    def __init__(self, msg, more_data = None):
-        if more_data:
+    def __init__(self, msg, ml = None, cl = None):
+        if ml:
+            self.misslist = ml
             msg += "\n"
-            for item in more_data:
+            for item in ml:
                 msg += "\n[i] Dependency %s for %s could not be satisfied" % (item.dep.name, item.target)                       
+        elif sl:
+            self.conflictlist = sl
+            msg += "\n"
+            for item in sl:
+                if item.type == p.PM_FILECONFLICT_TARGET:
+                    msg += "\n[i] %s: %s (pkg: %s and conflict pkg: %s)" % (item.type, item.file, item.target, item.ctarget)
+                else:
+                    msg += "\n[i] %s: %s (pkg: %s)" % (item.type, item.file, item.target)
         super(TransactionError, self).__init__(msg)
         
 
@@ -183,7 +192,10 @@ class Transaction(object):
     def handle_error(self, errno):
         if errno == 38:
             ml = MissList(p.get_list_from_ptr(self.__backend_data))
-            raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), ml)
+            raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), ml=ml)
+        elif errno == 40: 
+            cl = FileConflictList(p.get_list_from_ptr(self.__backend_data))
+            raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), cl=cl)
         else:
             raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno))
 
