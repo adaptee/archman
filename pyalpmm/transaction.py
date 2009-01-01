@@ -2,7 +2,7 @@ import pyalpmm_raw as p
 
 from database import *
 from tools import AskUser
-from lists import MissList, StringList, DependencyList, SyncPackageList
+from lists import MissList, StringList, DependencyList, SyncPackageList, FileConflictList
 from tools import CriticalError, UserError
 from item import PackageItem
 from events import Events
@@ -18,10 +18,10 @@ class TransactionError(CriticalError):
             msg += "\n"
             for item in ml:
                 msg += "\n[i] Dependency %s for %s could not be satisfied" % (item.dep.name, item.target)                       
-        elif sl:
-            self.conflictlist = sl
+        elif cl:
+            self.conflictlist = cl
             msg += "\n"
-            for item in sl:
+            for item in cl:
                 if item.type == p.PM_FILECONFLICT_TARGET:
                     msg += "\n[i] %s: %s (pkg: %s and conflict pkg: %s)" % (item.type, item.file, item.target, item.ctarget)
                 else:
@@ -170,7 +170,9 @@ class Transaction(object):
                     toinstall += [t]
                 except TransactionError as e:
                     out += [t]
-
+    
+        # need some check WHY targets could not be added! (fileconflicts...)
+         
         if len(out) > 0:
             raise TransactionError("Not all targets could be added, the remaining are: %s" % ", ".join(out))
 
