@@ -1,11 +1,11 @@
 pkgname=pyalpmm-svn
-pkgver=36
+pkgver=42
 pkgrel=1
 pkgdesc="The Python ALPM high-level API"
 arch=('i686' 'x86_64')
 license=('GPL')
 url="http://www.infolexikon.de/code/pyalpmm"
-depends=('python>=2.6.1' 'mirrorlist')
+depends=('python>=2.6.1' 'pacman-mirrorlist')
 makedepends=('swig')
 conflicts=('pyalpmm')
 
