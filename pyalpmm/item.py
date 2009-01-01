@@ -110,7 +110,7 @@ class FileConflictItem(AbstractItem):
     attributes = ["target", "type", "file", "ctarget"]
     ctypes = "pmfileconflicttype_t"
     extract = p.helper_list_getfileconflict
-    cdesc= = "fileconflict"
+    cdesc = "fileconflict"
     local_key_map = {"type" : FancyFileConflictType }
 
 
