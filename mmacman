@@ -130,7 +130,7 @@ if options.update:
         print "[e] %s" % e
 
 if options.search and options.sync:
-    gen = session.db_man.search_local_package(name=args[0])
+    gen = session.db_man.search_sync_package(name=args[0])
     print "[i] Searchresults:"
     for p in gen:
         print "[P] %s-%s " % (p.name, p.version)

@@ -74,7 +74,7 @@ class PackageList(LazyList):
             kwargs["desc"] = kwargs["name"]
         res = []
         for k,v in kwargs.items():
-            res += [pkg for pkg in self if pkg.get_info(k).lower().find( v.lower() ) > -1]
+            res += [pkg for pkg in self if pkg.get_info(k) and pkg.get_info(k).lower().find( v.lower() ) > -1]
         return list(set(res))
 
     def order_by(self, k):
