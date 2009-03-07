@@ -133,14 +133,12 @@ if options.search and options.sync:
     gen = session.db_man.search_sync_package(name=args[0])
     print "[i] Searchresults:"
     for p in gen:
-        print "[P] %s-%s " % (p.name, p.version)
-        print "       %s" % p.desc
+        print "[P] %(repo)s/%(name)s-%(version)s " % p
+        print "       %(desc)s" % p
 
 elif (options.query or options.sync) and options.info:
-    if options.query:
-        res = session.db_man.get_local_package(args[0])
-    else:
-        res = session.db_man.get_sync_package(args[0])
+    res = session.db_man.get_local_package(args[0]) if options.query \
+            else session.db_man.get_sync_package(args[0])
     
     print FancyPackage(res) if res else "[-] not found"
 
@@ -159,7 +157,7 @@ elif options.remove or options.sync or options.upgrade:
         with transobj:
             transobj.aquire()
             print "[i] Processing packages:"
-            print "    %s" % ", ".join("%s-%s" % (x.name, x.version) for x in transobj.get_targets())
+            print "    %s" % ", ".join("%(name)s-%(version)s" % p for p in transobj.get_targets())
             transobj.commit()
     except CriticalError as e:
         print "[e] %s" % e

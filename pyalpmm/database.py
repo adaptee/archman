@@ -75,8 +75,10 @@ class DatabaseManager(object):
            i.e. pass name="xterm" """
         out = []
         for db in (self.dbs.values() if not repo else (repo if isinstance(repo, (tuple, list)) else [repo])):
-            o = self[db].search_package(**kwargs)
-            if o: out += o
+            for pkg in self[db].search_package(**kwargs):
+                pkg.repo = db
+                out += [pkg]
+                
         return out 
     def search_local_package(self, **kwargs):
         return self.search_package(repo=self.local_dbs.keys(), **kwargs)
