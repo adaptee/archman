@@ -27,7 +27,7 @@ class ConfigOptions:
     local_db_path = "/var/lib/pacman"
     logfile = "/tmp/alpm.log"    
     
-    # need this, because the lockfile is not known while instanciating ConfigOptions
+    # need this, because the lockfile is not known on class create
     lockfile = property(lambda s: p.alpm_option_get_lockfile()) 
 
     rights = "root" if os.getuid() == 0 else "user"

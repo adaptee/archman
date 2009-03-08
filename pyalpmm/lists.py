@@ -3,6 +3,7 @@
 import os, sys
 import heapq
 from itertools import chain
+import urllib
 
 import pyalpmm_raw as p
 
@@ -85,6 +86,33 @@ class PackageList(LazyList):
         while lst:
             yield pop(lst)[1]
 
+class AURPackageList(PackageList):
+    base_url = "http://aur.archlinux.org/"
+    rpc_url = base_url + "rpc.php?type=%(type)s&arg=%(arg)s"
+    def __init__(self):
+        pass
+
+    def __len__(self):
+        #return len(self.pkg_list)
+        raise NotImplementedError
+
+    def __getitem__(self, i):
+        #return self.create_item(self.pkg_list[i])
+        raise NotImplementedError
+        
+    def __iter__(self):
+        raise NotImplementedError
+          
+    def search(self, **kw):
+        if "name" in kw:
+            data = {"type":"search", "arg":kw["name"]}
+            res = eval(urllib.urlopen(self.rpc_url % data).read())["results"]
+            
+            return [] if isinstance(res, str) else [self.create_item(p) for p in res]
+    
+    def create_item(self, dct):
+        return Item.AURPackageItem(dct)
+        
 class GroupList(LazyList):
     def create_item(self, raw_data):
         return Item.GroupItem(raw_data)
@@ -115,3 +143,5 @@ class StringList(LazyList):
             if what in s:
                 return True
         return False
+        
+        

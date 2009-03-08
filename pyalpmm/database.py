@@ -2,11 +2,14 @@
 
 from time import time
 from itertools import chain
-
+import re
+import os
+import urllib
+        
 
 import pyalpmm_raw as p
 from item import PackageItem
-from lists import PackageList, GroupList
+from lists import PackageList, GroupList, AURPackageList
 from tools import CriticalError
 
 class DatabaseError(CriticalError):
@@ -19,8 +22,7 @@ class DatabaseManager(object):
     local_dbs = {}
     sync_dbs = {}
     
-    def __init__(self, dbpath, events):
-        
+    def __init__(self, events):
         self.events = events 
         
     def __getitem__(self, tree):
@@ -144,7 +146,7 @@ class SyncDatabase(AbstractDatabase):
         if p.alpm_db_setserver(self.db, url) == -1:
             raise DatabaseError("Could not connect database: %s to server: %s" % (tree, url))
 
-    def update(self, force = False):
+    def update(self, force=False):
         r = p.alpm_db_update(force, self.db) 
         if r < 0:
             raise DatabaseError("Database '%s' could not be updated" % self.tree)
@@ -153,22 +155,34 @@ class SyncDatabase(AbstractDatabase):
         return True
 
 class AURDatabase(SyncDatabase):
-    baseurl = "http://aur.archlinux.org/"
-    rpcurl = baseurl + "rpc.php?type=%(type)s&arg=%(arg)s"
-    def __init__(self):
-        pass
+    #base_url = "http://aur.archlinux.org/"
+    #rpc_url = base_url + "rpc.php?type=%(type)s&arg=%(arg)s"
+    #idx_url = base_url + "packages/"
+    #idx_regex = re.compile(r"<a href\=\"(.*?)/\">\1/<\/a>")
+
+    def __init__(self, config):
+        self.config = config
+        #self.local_idx_file = "%s/aur_pkg_idx.csv" % config.local_db_path
   
     def get_packages(self):
-        # we cannot get all packages at once
-        # so we just return AURPackageList() which should wrap this ... another point: 
-        # do we really need "get_packages" in the databaseobjects??? check for kick-out! 
-        import urllib
-        res = eval(urllib.urlopen("").read())
-        
+        return AURPackageList()
         
     def get_groups(self):
-        #raise NotImplementedError("There are no groups in the AUR")
+        return []
+
+    def update(self, force=False):
+        #if os.path.exists(self.local_idx_file) and not force:
+        #    return False
+        
+        # fetching and parsing "index website" to get a full aur-pkg-list
+        #html = urllib.urlopen(self.idx_url).read()
+        #pkg_names = self.idx_regex.findall(html)
+
+        # saving data in self.local_idx_file
+        #open(self.local_idx_file,"w").write(",".join(pkg_names))
+        
+        #return True
+        
+
         pass
-
-
 

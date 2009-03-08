@@ -4,7 +4,7 @@ import os, sys
 
 import pyalpmm_raw as p
 
-from database import DatabaseManager, LocalDatabase, SyncDatabase
+from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
 from tools import CriticalError
 
 
@@ -25,11 +25,13 @@ class Session(object):
         if p.alpm_option_set_dbpath(config.local_db_path) == -1:
             raise SessionError("Could not open the database path: %s" % dbpath)
         
-        self.db_man = DatabaseManager(config.local_db_path[0], config.events)
+        self.db_man = DatabaseManager(config.events)
       
         self.db_man.register("local", LocalDatabase())
         for repo, url in config.available_repositories.items():
             self.db_man.register(repo, SyncDatabase(repo, url))
+
+        self.db_man.register("aur", AURDatabase(config))
 
         self.apply_config()
 
