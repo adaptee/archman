@@ -47,7 +47,7 @@ class ConfigOptions:
     build_uid = 1000
     build_gid = 100
     editor_command = "vim"
-    build_quiet = True
+    build_quiet = False
     
     def __init__(self, events, config_fn = None, cmd_options = None):
         self.events = events

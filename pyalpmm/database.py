@@ -81,7 +81,6 @@ class DatabaseManager(object):
             for pkg in self[db].search_package(**kwargs):
                 pkg.repo = db
                 out += [pkg]
-                
         return out 
     def search_local_package(self, **kwargs):
         return self.search_package(repo=self.local_dbs.keys(), **kwargs)
@@ -97,44 +96,33 @@ class DatabaseManager(object):
         """Get all groups from all databases (this is lazy evaluated)"""
         return chain(*[self[p].get_groups() for p in self.dbs])
 
-    def get_package(self, n, repo=None):
-        """Return first occurence of package by name (optional repo arg will only search in that DB).
-           Also if 'n' contins repo information like 'extra/wine' overwrite 'repo' with it."""
+    # this maybe private and with repo as mandatory argument
+    def get_package(self, n, repos):
+        """Return package either for sync or for local repo"""
+        repo = None
         if "/" in n:
             sp = n.index("/")
-            n, repo = n[sp+1:], n[:sp]        
-        src = self.search_package(name=n) if repo is None \
-            else self.dbs[repo].search_package(name=n)
+            n, repo = n[sp+1:], n[:sp]   
+            return self.search_package(n, repo=repo)
+            
+        assert repos in ["sync", "local"]
+        if repos == "sync":
+            found = [x for x in self.search_sync_package(name=n) if x.name == n]
+        else: 
+            found = [x for x in self.search_sync_package(name=n) if x.name == n]
         
-        found = [x for x in src if x.name == n]
-        if len(found) > 1:            
-            raise DatabaseError("'%s' is ambigous, found in repos: '%s' - please use repo/package notation" % (n, ", ".join(x.repo for x in found)))
-        elif len(found) == 0:
-            raise DatabaseError("'%s' was not found, searched repo(s): '%s'" % (n, (repo if repo else ", ".join(self.dbs.keys()))))
+        if len(found) == 0:
+            raise DatabaseError("'%s' was not found" % n)
+        elif len(found) > 1:
+            raise DatabaseError("'%s' is ambigous, found in repos: %s" % (n, ", ".join(x.repo for x in found)))
+           
         return found[0]        
             
     def get_local_package(self, n):
-        errs = []
-        for repo in self.local_dbs.keys():
-            try:
-                return self.get_package(n, repo=repo)
-            except DatabaseError as e:
-                errs += [e]
-        for err in reversed(errs[:-1]):
-            print err
-        raise errs[-1]
-        
+        return self.get_package(n, repos="local")
     def get_sync_package(self, n):
-        errs = []
-        for repo in self.sync_dbs.keys():
-            try:
-                return self.get_package(n, repo=repo)
-            except DatabaseError as e:
-                errs += [e]
-        for err in reversed(errs[:-1]):
-            print err
-        raise errs[-1]
-        
+        return self.get_package(n, repos="sync")
+                
     def get_group(self, n, repo=None):
         """Get one group by name (optional repo arg will only search in that DB)"""
         src = (self.get_all_groups() if repo is None \

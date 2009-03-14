@@ -70,7 +70,7 @@ class PackageBuilder(object):
         except OSError as e:
             raise BuildError("Could not change directory to: %s" % self.path)
         
-        makepkg = "makepkg %s" % "> /dev/null 2>&1" if self.session.config.build_quiet else "" 
+        makepkg = "makepkg %s" % ("> /dev/null 2>&1" if self.session.config.build_quiet else "")
         # if run as root, setuid to other user
         if os.getuid() == 0:
             pid = os.fork()
