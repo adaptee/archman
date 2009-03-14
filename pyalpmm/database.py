@@ -53,6 +53,7 @@ class DatabaseManager(object):
     def register(self, tree, db):
         """Register a new database"""
         if issubclass(db.__class__, AbstractDatabase):
+            db.tree = tree
             self[tree] = db
             if tree == "local":
                 self.local_dbs = {"local": db}
@@ -97,20 +98,43 @@ class DatabaseManager(object):
         return chain(*[self[p].get_groups() for p in self.dbs])
 
     def get_package(self, n, repo=None):
-        """Return first occurence of package by name (optional repo arg will only search in that DB)"""
+        """Return first occurence of package by name (optional repo arg will only search in that DB).
+           Also if 'n' contins repo information like 'extra/wine' overwrite 'repo' with it."""
+        if "/" in n:
+            sp = n.index("/")
+            n, repo = n[sp+1:], n[:sp]        
         src = self.search_package(name=n) if repo is None \
             else self.dbs[repo].search_package(name=n)
-        for pkg in (x for x in src if x.name == n):
-            return pkg
+        
+        found = [x for x in src if x.name == n]
+        if len(found) > 1:            
+            raise DatabaseError("'%s' is ambigous, found in repos: '%s' - please use repo/package notation" % (n, ", ".join(x.repo for x in found)))
+        elif len(found) == 0:
+            raise DatabaseError("'%s' was not found, searched repo(s): '%s'" % (n, (repo if repo else ", ".join(self.dbs.keys()))))
+        return found[0]        
+            
     def get_local_package(self, n):
+        errs = []
         for repo in self.local_dbs.keys():
-            ret = self.get_package(n, repo=repo)
-            if ret: return ret
+            try:
+                return self.get_package(n, repo=repo)
+            except DatabaseError as e:
+                errs += [e]
+        for err in reversed(errs[:-1]):
+            print err
+        raise errs[-1]
+        
     def get_sync_package(self, n):
+        errs = []
         for repo in self.sync_dbs.keys():
-            ret = self.get_package(n, repo=repo)
-            if ret: return ret
-         
+            try:
+                return self.get_package(n, repo=repo)
+            except DatabaseError as e:
+                errs += [e]
+        for err in reversed(errs[:-1]):
+            print err
+        raise errs[-1]
+        
     def get_group(self, n, repo=None):
         """Get one group by name (optional repo arg will only search in that DB)"""
         src = (self.get_all_groups() if repo is None \
@@ -126,8 +150,12 @@ class AbstractDatabase(object):
         p.alpm_db_unregister(self.db)
 
     def search_package(self, **kwargs):
-        return self.get_packages().search(**kwargs)
-
+        out = []
+        for p in self.get_packages().search(**kwargs):
+            p.repo = self.tree
+            out += [p]
+        return out
+        
     def get_packages(self):
         return PackageList(p.alpm_db_getpkgcache(self.db))
 
@@ -135,14 +163,12 @@ class AbstractDatabase(object):
         return GroupList(p.alpm_db_getgrpcache(self.db))
 
 class LocalDatabase(AbstractDatabase):
-    tree = "local"
     def __init__(self):
         self.db = p.alpm_db_register_local()
 
 class SyncDatabase(AbstractDatabase):
     def __init__(self, tree, url):
-        self.tree = tree
-        self.db = p.alpm_db_register_sync(self.tree)
+        self.db = p.alpm_db_register_sync(tree)
         if p.alpm_db_setserver(self.db, url) == -1:
             raise DatabaseError("Could not connect database: %s to server: %s" % (tree, url))
 
@@ -155,34 +181,18 @@ class SyncDatabase(AbstractDatabase):
         return True
 
 class AURDatabase(SyncDatabase):
-    #base_url = "http://aur.archlinux.org/"
-    #rpc_url = base_url + "rpc.php?type=%(type)s&arg=%(arg)s"
-    #idx_url = base_url + "packages/"
-    #idx_regex = re.compile(r"<a href\=\"(.*?)/\">\1/<\/a>")
-
-    def __init__(self, config):
-        self.config = config
-        #self.local_idx_file = "%s/aur_pkg_idx.csv" % config.local_db_path
-  
+    def __init__(self):
+        pass
+        
     def get_packages(self):
+        # AURPackageList() transparently represents all aur-packages
         return AURPackageList()
         
     def get_groups(self):
+        # no grps in aur used (afaik?!)
         return []
 
     def update(self, force=False):
-        #if os.path.exists(self.local_idx_file) and not force:
-        #    return False
-        
-        # fetching and parsing "index website" to get a full aur-pkg-list
-        #html = urllib.urlopen(self.idx_url).read()
-        #pkg_names = self.idx_regex.findall(html)
-
-        # saving data in self.local_idx_file
-        #open(self.local_idx_file,"w").write(",".join(pkg_names))
-        
-        #return True
-        
-
+        # no update possible, as we do not cache the pkgs from aur yet
         pass
 

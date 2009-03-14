@@ -1,19 +1,8 @@
-#from exceptions import BaseException
+
 import time
 import sys, os
 
 import pyalpmm_raw as p
-
-from pyalpmm import lists as List
-
-
-
-class PackageBuilder(object):
-    def __init__(self, pkgbuild_path_or_url):
-        if os.path.exists(pkgbuild_path_or_url) and os.chdir(os.path.dirname(pkgbuild_path_or_url)):
-             if os.system("makepkg") == 0:
-                # "pacman -U the resulting package"
-                pass
 
 
 class AskUser(object):
@@ -69,11 +58,13 @@ class FancyReason(FancyOutput):
 
 class FancyPackage(FancyOutput):      
     def __init__(self, pkg):
+        from pyalpmm.lists import LazyList
+    
         o = "<### Package Info:\n"
         for key, val in ((x, pkg.get_info(x)) for x in pkg.all_attributes):
             if not val:
-                continue  
-            elif issubclass(val.__class__, List.LazyList):
+                continue
+            elif issubclass(val.__class__, LazyList):
                 o += "%13s - %s\n" % (key, val) if len(val) < 8 \
                     else "%13s - | list too long - size:%s |  \n" % (key, len(val))
             else:

@@ -18,6 +18,9 @@ class AbstractItem(object):
         """The raw_data _must_ be either 'alpm_list_t' or the ctype of the calling creating class"""
         self.raw_data = self.extract(raw_data) if raw_data.__class__.__name__ == "alpm_list_t" else raw_data 
 
+        for att in self.non_pacman_attributes:
+            setattr(self, att, None)
+
     def __getattr__(self, key):
         """Data from the item is presented as an object attribute"""
         try:
@@ -47,13 +50,13 @@ class AbstractItem(object):
         
         # catch non c-lib/pacman attributes
         if key in self.non_pacman_attributes:
-            craw = getattr(self, key)
+            craw = object.__getattribute__(self, key)
         else:
             # get data from c-lib            
             try:
                 craw = getattr(p, "alpm_%s_get_%s" % (self.cdesc, key))(self.raw_data)
             except AttributeError, e:
-                raise KeyError("An instance of %s contains info for: %s but not: '%s'" % \
+                raise KeyError("An instance of %s contains info for: '%s' but not: '%s'" % \
                     (self.__class__.__name__, ", ".join(self.attributes), key))
         
         # return manipulated value if key in local_key_map
@@ -83,6 +86,7 @@ class PackageItem(AbstractItem):
 class SyncPackageItem(AbstractItem):
     attributes = ["name", "version"]
     extract = p.helper_list_getsyncpkg
+    cdesc = "pkg"
 
 class AURPackageItem(AbstractItem):
     # this was non-avoidable, aur-naming doesn't follow the pacman naming scheme :(

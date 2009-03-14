@@ -65,14 +65,14 @@ class Transaction(object):
             self.prepare()
     
     def prepare(self):   
-            self.__backend_data = p.get_list_buffer_ptr()
-            if p.alpm_trans_prepare(self.__backend_data) == -1:
-                self.handle_error(p.get_errno())
+        self.__backend_data = p.get_list_buffer_ptr()
+        if p.alpm_trans_prepare(self.__backend_data) == -1:
+            self.handle_error(p.get_errno())
                 
-            if len(self.get_targets()) == 0:
-                raise TransactionError("Nothing to be done...")
+        if len(self.get_targets()) == 0:
+            raise TransactionError("Nothing to be done...")
             
-            self.events.DoneTransactionPrepare()
+        self.events.DoneTransactionPrepare()
     
     def __enter__(self):
         return self

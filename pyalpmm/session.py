@@ -31,7 +31,7 @@ class Session(object):
         for repo, url in config.available_repositories.items():
             self.db_man.register(repo, SyncDatabase(repo, url))
 
-        self.db_man.register("aur", AURDatabase(config))
+        self.db_man.register("aur", AURDatabase())
 
         self.apply_config()
 

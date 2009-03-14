@@ -40,6 +40,14 @@ class ConfigOptions:
     
     listopts = ("holdpkg", "ignorepkg", "ignoregrp", "noupgrade", "noextract", "cachedir")
     pathopts = ("local_db_path", "rootpath", "logfile")
+
+    build_dir = "/tmp/mmacman_build"
+    abs_dir = "/var/abs"
+    aur_url = "http://aur.archlinux.org/packages/"
+    build_uid = 1000
+    build_gid = 100
+    editor_command = "vim"
+    build_quiet = True
     
     def __init__(self, events, config_fn = None, cmd_options = None):
         self.events = events
@@ -65,8 +73,13 @@ class ConfigOptions:
     def read_from_file(self):
         import ConfigParser, os
         if not os.path.exists(self.configfile):
-            raise ConfigError("The configfile could not be found: %s" % self.configfile)
-            
+            # second try in current dir (for devel in first case, maybe not good?!)
+            if os.path.exists(os.path.basename(self.configfile)):
+                print "[i] took the %s from current dir as configfile" % os.path.basename(self.configfile)
+                self.configfile = os.path.basename(self.configfile)
+            else:
+                raise ConfigError("The configfile could not be found: %s" % self.configfile)
+                        
         config = ConfigParser.RawConfigParser()
         config.read(self.configfile)
         for p in self.listopts:

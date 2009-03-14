@@ -26,6 +26,10 @@ class Events:
              # progress handling
              "ProgressDownload", "ProgressDownloadTotal",
              "ProgressInstall", "ProgressRemove", "ProgressUpgrade", "ProgressConflict",
+             # building
+             "DoneBuildDirectoryCleanup", "StartABSBuildPrepare", "StartAURBuildPrepare",
+             "DoneBuildPrepare", "StartBuild", "DoneBuild", "StartBuildEdit", "DoneBuildEdit",
+             
              # log
              "Log"
              
