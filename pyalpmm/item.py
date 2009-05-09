@@ -93,7 +93,7 @@ class AURPackageItem(AbstractItem):
     __aur_attributes = {"Version":"version", "Name":"name", "License":"license", 
                         "URLPath":"urlpath", "URL":"url", "Description":"desc", 
                         "OutOfDate":"outofdate", "NumVotes":"votes", "ID":"id", 
-                        "CategoryID":"category_id"}
+                        "CategoryID":"category_id", "LocationID":"location_id"}
     non_pacman_attributes = __aur_attributes.values() + ["repo"]
     attributes = ["name", "version"]                 
     def __init__(self, dct):
@@ -144,6 +144,8 @@ GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
                       "pmdepend_t"       : DependencyItem,
                       "alpm_list_t"      : List.StringList,
                       "pmdepmod_t"       : int,
+                      "off_t"            : int,
+                      "size_t"           : int,
                       "int"              : int,
                       "str"              : str,
                       "long"             : long,
