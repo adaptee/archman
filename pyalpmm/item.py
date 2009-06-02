@@ -136,7 +136,6 @@ class FileConflictItem(AbstractItem):
     cdesc = "fileconflict"
     local_key_map = {"type" : FancyFileConflictType }
 
-
 GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
                       "pmsyncpkg_t"      : SyncPackageItem,
                       "pmpkg_t"          : PackageItem,
@@ -144,8 +143,6 @@ GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
                       "pmdepend_t"       : DependencyItem,
                       "alpm_list_t"      : List.StringList,
                       "pmdepmod_t"       : int,
-                      "off_t"            : int,
-                      "size_t"           : int,
                       "int"              : int,
                       "str"              : str,
                       "long"             : long,
