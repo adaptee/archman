@@ -1,7 +1,7 @@
 all: clean  build
 
 DESTDIR=/
-RELEASE=0.2
+RELEASE=0.2.1
 PKGREL=1
 
 ARCH=`uname -m`
@@ -31,7 +31,7 @@ create_tag:
 		 svn://infolexikon.de/pyalpmm/tags/pyalpmm-$(RELEASE) \
 		 -m "Tagging the $(RELEASE)"
 create_release: 
-	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn -C ../tags/ pyalpmm-$(RELEASE)
+	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn -C ../tags/pyalpmm-$(RELEASE)
 
 
 arch_release: clean
