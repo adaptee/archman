@@ -30,9 +30,9 @@ create_tag:
 	svn copy svn://infolexikon.de/pyalpmm/trunk \
 		 svn://infolexikon.de/pyalpmm/tags/pyalpmm-$(RELEASE) \
 		 -m "Tagging the $(RELEASE)"
-create_release: 
-	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn -C ../tags/pyalpmm-$(RELEASE)
-
+create_release:
+	cd ../tags/pyalpmm-$(RELEASE) || exit
+	tar zcvf pyalpmm-$(RELEASE).tgz --exclude=.svn * 
 
 arch_release: clean
 	cd arch/release/ && makepkg && cp pyalpmm-$(RELEASE)-$(PKGREL).pkg.tar.gz ../../
