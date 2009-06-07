@@ -1,5 +1,5 @@
 pkgname=pyalpmm
-pkgver=0.2.1
+pkgver=0.2.1.1
 pkgrel=1
 pkgdesc="The Python ALPM high-level API"
 arch=(i686 x86_64)

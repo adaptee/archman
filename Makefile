@@ -1,7 +1,7 @@
 all: clean  build
 
 DESTDIR=/
-RELEASE=0.2.1
+RELEASE=0.2.1.1
 PKGREL=1
 
 ARCH=`uname -m`
