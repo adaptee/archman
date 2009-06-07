@@ -5,7 +5,7 @@ pkgdesc="The Python ALPM high-level API"
 arch=(i686 x86_64)
 license=('GPL')
 url="http://www.infolexikon.de/code/pyalpmm"
-depends=('python>=2.6.1' 'mirrorlist')
+depends=('python>=2.6.1' 'pacman-mirrorlist')
 makedepends=('swig')
 source=(http://static.evigo.net/infolexikon/releases/${pkgname}-${pkgver}.tgz)
 

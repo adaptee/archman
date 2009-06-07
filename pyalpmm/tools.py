@@ -15,8 +15,10 @@ class AskUser(object):
         self.answer = ans
 
 class FancyOutput(object):
-    raw, out = None, None
-
+    def __init__(self, data):
+        self.raw = data
+        self.out = data
+    
     def __len__(self):
         return len(self.out)
 
