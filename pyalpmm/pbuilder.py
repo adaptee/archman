@@ -82,11 +82,12 @@ class PackageBuilder(object):
             else:
                 os.setuid(c.build_uid)
                 if not os.system(makepkg) == 0:
-                    raise BuildError("The build was not successful")
+                    print "[-] The build was not successful"
                 sys.exit()
         else:
             if not os.system(makepkg) == 0:
-                raise BuildError("The build was not successful")
+                raise BuildError("The build was not successful, "
+                                 "could not change user-uid")
 
         self.events.DoneBuild()
 
@@ -95,6 +96,12 @@ class PackageBuilder(object):
             if fn.endswith(".pkg.tar.gz"):
                 self.pkgfile_path = os.path.join(self.path, fn)
                 break
+
+        if self.pkgfile_path is None:
+            raise BuildError("The package could not be built.\n"
+                             "Either watch the debug generated during the "
+                             "build\nor check the build-dir for problems: %s" %
+                             c.build_dir )
 
     # this maybe should callback something to accomplish editing inside a gui
     def edit(self):

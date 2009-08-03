@@ -9,7 +9,7 @@ from pyalpmm import Session, PyALPMMConfiguration, Events
 from pyalpmm.transaction import SyncTransaction, RemoveTransaction, UpgradeTransaction
 from pyalpmm.transaction import DatabaseUpdateTransaction, SysUpgradeTransaction
 from pyalpmm.tools import AskUser, CriticalError, FancyPackage
-from pyalpmm.pbuilder import PackageBuilder
+from pyalpmm.pbuilder import PackageBuilder, BuildError
 from pyalpmm.database import DatabaseError
 
 import pyalpmm_raw as p
@@ -251,7 +251,13 @@ elif options.build:
     if not options.no_prepare:
         p.prepare()
 
-    p.build()
+    try:
+        p.build()
+    except BuildError as e:
+        for line in str(e).split("\n"):
+            print "[-] %s" % line
+        print "[i] Exited building enviroment, nothing more to do, exiting..."
+        sys.exit(1)
 
     if options.install:
         transobj = UpgradeTransaction(session, targets=[p.pkgfile_path])
