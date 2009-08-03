@@ -188,7 +188,10 @@ class PyALPMMConfiguration(ConfigMapper):
         config_fn = config_fn or self.configfile
         thisdir = os.path.basename(config_fn)
         parentdir = os.path.join("..", os.path.basename(config_fn))
-        if not os.path.exists(config_fn):
+
+        if os.path.exists(config_fn):
+            pass # found regular config, all fine, go on...
+        elif not os.path.exists(config_fn):
             if os.path.exists(thisdir):
                 print "[i] %s isn't there - took ./%s as configfile" % \
                       (config_fn, thisdir)
