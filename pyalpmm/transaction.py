@@ -10,14 +10,14 @@ from events import Events
 import os, sys
 
 
-        
+
 class TransactionError(CriticalError):
     def __init__(self, msg, ml = None, cl = None):
         if ml:
             self.misslist = ml
             msg += "\n"
             for item in ml:
-                msg += "\n[i] Dependency %s for %s could not be satisfied" % (item.dep.name, item.target)                       
+                msg += "\n[i] Dependency %s for %s could not be satisfied" % (item.dep.name, item.target)
         elif cl:
             self.conflictlist = cl
             msg += "\n"
@@ -27,7 +27,7 @@ class TransactionError(CriticalError):
                 else:
                     msg += "\n[i] %s: %s (pkg: %s)" % (item.type, item.file, item.target)
         super(TransactionError, self).__init__(msg)
-        
+
 
 class Transaction(object):
     targets = None
@@ -40,7 +40,7 @@ class Transaction(object):
         self.session = session
         self.events = self.session.config.events
         self.targets = targets
-    
+
     def aquire(self):
         if self.session.config.rights != "root":
             raise TransactionError("You must be root to initialize a transaction")
@@ -53,9 +53,10 @@ class Transaction(object):
             if p.get_errno() == p.PM_ERR_HANDLE_LOCK:
                 raise TransactionError("The local database is locked")
             raise TransactionError("Could not initialize the transaction")
-        
-        self.pkg_search_list = self.session.db_man.get_all_packages()
-        self.grp_search_list = self.session.db_man.get_all_groups()
+
+        # obsolete ???
+        self.pkg_search_list = self.session.db_man.get_packages()
+        self.grp_search_list = self.session.db_man.get_groups()
 
         self.events.DoneTransactionInit()
         self.ready = True
@@ -63,30 +64,30 @@ class Transaction(object):
         if self.targets:
             self.set_targets(self.targets)
             self.prepare()
-    
-    def prepare(self):   
+
+    def prepare(self):
         self.__backend_data = p.get_list_buffer_ptr()
         if p.alpm_trans_prepare(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
-                
+
         if len(self.get_targets()) == 0:
             raise TransactionError("Nothing to be done...")
-            
+
         self.events.DoneTransactionPrepare()
-    
+
     def __enter__(self):
         return self
-        
+
     def __exit__(self, type, value, traceback):
         self.release()
-       
+
     # those 5 methods wrap the Transaction events to the Events instance
     def __callback_download_progress(self, fn, transfered, filecount):
-        self.events.ProgressDownload(filename=fn, transfered=transfered, filecount=filecount)        
+        self.events.ProgressDownload(filename=fn, transfered=transfered, filecount=filecount)
     def __callback_download_total_progress(self, total):
-        self.events.ProgressDownloadTotal(total=total)       
+        self.events.ProgressDownloadTotal(total=total)
     def __callback_event(self, event, data1, data2):
-        if event == p.PM_TRANS_EVT_CHECKDEPS_START: 
+        if event == p.PM_TRANS_EVT_CHECKDEPS_START:
             self.events.StartCheckingDependencies()
         elif event == p.PM_TRANS_EVT_FILECONFLICTS_START:
             self.events.StartCheckingFileConflicts()
@@ -140,12 +141,12 @@ class Transaction(object):
             self.events.ProgressRemove(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
         elif event == p.PM_TRANS_PROGRESS_CONFLICTS_START:
             self.events.ProgressConflict(pkgname=pkgname, percent=percent, howmany=howmany, remain=remain)
-    
+
     def release(self):
         p.alpm_trans_release()
         self.events.DoneTransactionDestroy()
-    
-       
+
+
     def add_target(self, pkg_name):
         if p.alpm_trans_addtarget(pkg_name) == -1:
             if p.get_errno() == p.PM_ERR_PKG_NOT_FOUND:
@@ -170,9 +171,9 @@ class Transaction(object):
                     toinstall += [t]
                 except TransactionError as e:
                     out += [t]
-    
+
         # need some check WHY targets could not be added! (fileconflicts...)
-         
+
         if len(out) > 0:
             raise TransactionError("Not all targets could be added, the remaining are: %s" % ", ".join(out))
 
@@ -181,21 +182,21 @@ class Transaction(object):
 
     def get_targets(self):
         return PackageList(p.alpm_trans_get_pkgs())
-        
+
     def commit(self):
         if len(self.get_targets()) == 0:
             raise TransactionError("Nothing to be done...")
-            
+
         if p.alpm_trans_commit(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
-        
+
         self.events.DoneTransactionCommit()
-  
+
     def handle_error(self, errno):
         if errno == 38:
             ml = MissList(p.get_list_from_ptr(self.__backend_data))
             raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), ml=ml)
-        elif errno == 40: 
+        elif errno == 40:
             cl = FileConflictList(p.get_list_from_ptr(self.__backend_data))
             raise TransactionError("ALPM error: %s (%s)" % (p.alpm_strerror(errno), errno), cl=cl)
         else:
@@ -206,10 +207,10 @@ class SyncTransaction(Transaction):
 
     def get_targets(self):
         return SyncPackageList(p.alpm_trans_get_pkgs())
-    
+
 class RemoveTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_REMOVE
-    
+
     def __init__(self, session, targets = None):
         super(RemoveTransaction, self).__init__(session, targets=targets)
 
@@ -218,7 +219,7 @@ class RemoveTransaction(Transaction):
 
 class UpgradeTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_UPGRADE
-    
+
 class RemoveUpgradeTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_REMOVEUPGRADE
 
@@ -226,11 +227,11 @@ class SysUpgradeTransaction(SyncTransaction):
     def __init__(self, session):
         """For a SysUpgrade don't allow passing targets"""
         super(SysUpgradeTransaction, self).__init__(session)
-    
+
     def aquire(self):
         super(SysUpgradeTransaction, self).aquire()
-        self.prepare()  
-        
+        self.prepare()
+
     def prepare(self):
         if  p.alpm_trans_sysupgrade() == -1:
             raise TransactionError("The SystemUpgrade failed")
@@ -240,18 +241,24 @@ class DatabaseUpdateTransaction(SyncTransaction):
     def __init__(self, session, dbs = None):
         super(DatabaseUpdateTransaction, self).__init__(session)
         self.target_dbs = dbs
-        
+
     def prepare(self):
         pass
-        
+
     def commit(self):
+        """
+        Those ::update_dbs() must be implemented by the database type.
+        It's not really nice, but I also have "force" here as argument to
+        be passed, as you might not _always_ have set the right transaction
+        flags, if you want to force a database update
+        """
+
         dbs = self.target_dbs
         if not dbs:
             o = self.session.db_man.update_dbs(force=self.session.config.force)
         elif issubclass(dbs.__class__, list) and all(isinstance(x,str) for x in dbs):
-            o = self.session.db_man.update_dbs(dbs=dbs, force=self.session.config.force)            
+            o = self.session.db_man.update_dbs(dbs=dbs, force=self.session.config.force)
         elif isinstance(dbs, str):
             o = self.session.db_man.update_dbs(dbs=[dbs], force=self.session.config.force)
         else:
             raise TypeError("The passed databases must be either a list of strings or only one string, not: %s" % dbs)
-        

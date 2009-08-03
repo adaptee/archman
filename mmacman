@@ -5,52 +5,51 @@ from time import time as utime
 from random import choice
 from optparse import OptionParser, OptionGroup
 
-from pyalpmm.session import Session
+from pyalpmm import Session, PyALPMMConfiguration, Events
 from pyalpmm.transaction import SyncTransaction, RemoveTransaction, UpgradeTransaction
 from pyalpmm.transaction import DatabaseUpdateTransaction, SysUpgradeTransaction
 from pyalpmm.tools import AskUser, CriticalError, FancyPackage
-from pyalpmm.events import Events
-from pyalpmm.options import ConfigOptions
 from pyalpmm.pbuilder import PackageBuilder
+from pyalpmm.database import DatabaseError
 
 import pyalpmm_raw as p
 
-      
-class MMacmanEvents(Events):     
+
+class MMacmanEvents(Events):
     def DatabaseUpToDate(self, **kw):
         print "[i] Database up to date: %s" % kw["repo"]
-        
+
     def DatabaseUpdated(self, **kw):
         print "[+] Database updated: %s" % kw["repo"]
-        
+
     def StartResolvingDependencies(self):
         print "[i] Resolving Dependencies..."
-        
+
     def StartCheckingInterConflicts(self):
         print "[i] Checking Inter-Conflicts..."
-        
+
     def StartRetrievingPackages(self, **kw):
         print "[+] Retrieving from %s" % kw["repo"]
-    
+
     def StartUpgradingPackage(self, **kw):
         print "[+] Upgrading: %(name)s-%(version)s"  % kw["pkg"]
-    
+
     def StartRemovingPackage(self, **kw):
         print "[+] Removing: %(name)s-%(version)s"  % kw["pkg"]
-        
+
     def StartInstallingPackage(self, **kw):
         print "[+] Installing: %(name)s-%(version)s"  % kw["pkg"]
-    
+
     def StartCheckingPackageIntegrity(self):
         print "[+] Checking package integrity..."
-        
+
     def StartCheckingFileConflicts(self):
         print "[+] Checking file conflicts..."
-        
+
     def StartBuild(self, **kw):
         print "[+] Starting build: %(name)s-%(version)s"  % kw["pkg"]
-        
-        
+
+
 parser = OptionParser()
 group = OptionGroup(parser, "General Options",
                     "Can be used standalone and in combination with any other options")
@@ -59,7 +58,7 @@ group.add_option("-y", "--update", dest="update", action="store_true",
 group.add_option("-x", "--delete-lock", dest="delete_lockfile", action="store_true",
                   help="Deleting the database lockfile " +
                        "(ATTENTION - use only if you know what you are doing!" +
-                       " usable standalone and in combination with everything)")                   
+                       " usable standalone and in combination with everything)")
 group.add_option("-c", "--configfile", dest="configfile", metavar="FILE",
                   help="use given file as a config file")
 parser.add_option_group(group)
@@ -71,39 +70,44 @@ group.add_option("-f", "--force", dest="force", action="store_true",
 group.add_option("-d", "--nodeps", dest="nodeps", action="store_true",
                   help="ignore dependencies")
 group.add_option("-w", "--downloadonly", dest="download_only", action="store_true",
-                  help="only download packages")                  
+                  help="only download packages")
 group.add_option("-i", "--info", dest="info", action="store_true",
                   help="Get info for some package. With -Q local and with -S from sync repo")
 parser.add_option_group(group)
 
 group = OptionGroup(parser, "Sync Actions",
-                    "-S activates the sync actions")                  
+                    "-S activates the sync actions")
 group.add_option("-S", "--sync", dest="sync", action="store_true",
                   help="Synchronise package")
 group.add_option("-u", "--sysupgrade", dest="sysupgrade", action="store_true",
                   help="Perform a global system upgrade")
 group.add_option("-s", "--search", dest="search", action="store_true",
                   help="Search package in SyncDatabases")
-parser.add_option_group(group)                  
+parser.add_option_group(group)
 
 group = OptionGroup(parser, "Upgrade Actions",
-                    "-U activates the upgrade actions")                  
+                    "-U activates the upgrade actions")
 group.add_option("-U", "--upgrade", dest="upgrade", action="store_true",
                   help="Upgrade package")
-parser.add_option_group(group)                  
+parser.add_option_group(group)
 
-group = OptionGroup(parser, "Query Actions", 
-                    "-Q activates the Query Actions")         
+group = OptionGroup(parser, "Query Actions",
+                    "-Q activates the Query Actions")
 group.add_option("-Q", "--query", dest="query", action="store_true",
                   help="List all local packages")
+group.add_option("-F", "--files", dest="show_files", action="store_true",
+                 help="List of all files in the given package")
+group.add_option("-o", "--owns", dest="owns", action="store_true",
+                 help="Look for package that contains the given file/dir/path")
+
 parser.add_option_group(group)
-                             
+
 group = OptionGroup(parser, "Remove Actions",
                     "-R activates the Remove Actions")
 group.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
 parser.add_option_group(group)
-                  
+
 group = OptionGroup(parser, "Build Actions",
                     "-B activates the Build Actions")
 group.add_option("-B", "--build", dest="build", action="store_true",
@@ -124,19 +128,27 @@ parser.add_option_group(group)
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
-config = ConfigOptions(events, config_fn=options.configfile, cmd_options=options)
+config = PyALPMMConfiguration(events,
+                              options.configfile,
+                              cmd_args=options)
 
 # uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
 events.logfile = config.logfile
 
 session = Session(config)
 
+if options.force or options.nodeps or options.download_only:
+    print "[i] You have set the following commandline options:"
+    if options.force: print "[i]   Forced transaction (-f)"
+    if options.nodeps: print "[i]   Ignoring dependencies (-d)"
+    if options.download_only: print "[i]   Download packages only (-w)"
+
 if options.delete_lockfile:
     if config.rights != "root":
         print "[e] You must be root to delete the database lockfile: %s" % config.lockfile
-        
-    if os.path.exists(config.lockfile):
-        os.unlink(config.lockfile)
+
+    if os.path.exists(config.logfile):
+        os.unlink(config.logfile)
         print "[+] Successfully deleted the db_lock_file: %s" % config.lockfile
     else:
         print "[-] There is no need to delete the db_lock_file: %s" % config.lockfile
@@ -157,45 +169,88 @@ if options.search and options.sync:
         print "       %(desc)s" % p
 
 elif (options.query or options.sync) and options.info:
-    res = session.db_man.get_local_package(args[0]) if options.query \
-            else session.db_man.get_sync_package(args[0])
-    
-    print FancyPackage(res) if res else "[-] not found"
+    try:
+        res = session.db_man.get_local_package(args[0]) \
+            if options.query else session.db_man.get_sync_package(args[0])
+    except DatabaseError as e:
+        print "[-] package: %s" % e
+    else:
+        if options.show_files and options.sync:
+            print ("[-] Sorry, there is no way to "
+                   "get un-local filelists of packages")
+        elif options.show_files:
+            print "[+] Showing filelist of: %s" % args[0]
+            for fn in res.files:
+                print "[i] %s" % fn
+        else:
+            print FancyPackage(res)
+
+elif options.query or (options.query and options.sync):
+    if options.owns:
+        print "[+] looking for a package which contains: %s" % args[0]
+
+        filename = args[0] if not args[0].startswith("/") else args[0][1:]
+        for pkg in session.db_man.get_local_packages():
+            if filename in pkg.files:
+                print "[+] found %s in package: %s" % (args[0], pkg.name)
+                break
+        else:
+            print ("[-] %s was not found in any known package, "
+                   "only the local repository can be searched." % args[0])
+
+    elif options.sync:
+        print "[+] listing all sync availible packages"
+        for pkg in session.db_man.get_sync_packages():
+            print "[i] %s/%s %s" % (pkg.repo, pkg.name, pkg.version)
+    else:
+        print "[+] listing all localy installed packages"
+        for pkg in session.db_man.get_local_packages():
+            print "[i] %s %s" % (pkg.name, pkg.version)
 
 elif options.remove or options.sync or options.upgrade:
-    
     if options.remove:
         transobj = RemoveTransaction(session, targets=args)
     elif options.upgrade:
         transobj = UpgradeTransaction(session, targets=args)
     elif options.sync and not options.sysupgrade:
+        for pkgname in args:
+            try:
+                loc_pkg = session.db_man.get_local_package(pkgname)
+            except DatabaseError as e:
+                pass
+            else:
+                syn_pkg = session.db_man.get_sync_package(pkgname)
+                if loc_pkg.version == syn_pkg.version:
+                    print ("[i] package: %s already in latest version: %s"
+                           " re-installing!") % (loc_pkg.name, loc_pkg.version)
+
         transobj = SyncTransaction(session, targets=args)
     else:
         transobj = SysUpgradeTransaction(session)
-    
+
     try:
         with transobj:
             transobj.aquire()
             print "[i] Processing packages:"
-            print "    %s" % ", ".join(("%(name)s-%(version)s" % p) for p in transobj.get_targets())
+            print "    %s" % ", ".join(("%(name)s-%(version)s" % p) \
+                                       for p in transobj.get_targets())
             transobj.commit()
     except CriticalError as e:
         print "[e] %s" % e
 
 elif options.build:
-    
     pkg = session.db_man.get_sync_package(args[0])
     p = PackageBuilder(session, pkg)
-    
+
     if options.edit:
         p.edit()
-    
+
     if not options.no_cleanup:
         p.cleanup()
-        
+
     if not options.no_prepare:
         p.prepare()
-        
+
     p.build()
 
     if options.install:
@@ -208,6 +263,10 @@ elif options.build:
         except CriticalError as e:
             print "[e] %s" % e
 
+elif not options.delete_lockfile and not options.update:
+    print "[-] not recognised commandline main option, try -h"
+
 else:
-    print "[-] not recognised commandline options, try -h"
+    # in the best case these lines are only reached for wrong cmd-line args
+    pass
 

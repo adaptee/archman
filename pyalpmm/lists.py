@@ -4,10 +4,12 @@ import os, sys
 import heapq
 from itertools import chain
 import urllib
+import re
 
 import pyalpmm_raw as p
 
 import item as Item
+from options import PyALPMMConfiguration as config
 
 class LazyList(object):
     """Handles wrapping the backend lists"""
@@ -87,32 +89,56 @@ class PackageList(LazyList):
             yield pop(lst)[1]
 
 class AURPackageList(PackageList):
-    base_url = "http://aur.archlinux.org/"
-    rpc_url = base_url + "rpc.php?type=%(type)s&arg=%(arg)s"
-    def __init__(self):
-        pass
+    _package_database_cache = None
+    _package_list_pattern = re.compile(r'a href\=\"([^\"]+)\"')
+    def __init__(self, config):
+        self.config = config
 
     def __len__(self):
-        #return len(self.pkg_list)
-        raise NotImplementedError
+        return len(self.package_database)
 
     def __getitem__(self, i):
-        #return self.create_item(self.pkg_list[i])
-        raise NotImplementedError
-        
+        return self.create_item({"Name": self.package_database[i],
+                                 "Version": "(aur)"})
+    @classmethod
+    def refresh_db_cache(cls, aur_db_path, aur_pkg_url):
+        cls._package_database_cache = []
+        with file(aur_db_path, "w") as fd:
+            for line in urllib.urlopen(aur_pkg_url):
+                match = cls._package_list_pattern.search(line)
+                if match:
+                    pkgname = match.group(1)[:-1]
+                    cls._package_database_cache.append(pkgname)
+                    fd.write("%s\n" % pkgname)
+        return len(cls._package_database_cache) > 0
+
+    @property
+    def package_database(self):
+        c = self.config
+        if self._package_database_cache is None:
+            if os.path.exists(c.aur_db_path):
+                with file(c.aur_db_path) as fd:
+                    self._package_database_cache = fd.read().split("\n")[:-1]
+            else:
+                self.refresh_db_cache(c.aur_db_path, c.aur_url + c.aur_pkg_dir)
+        return self._package_database_cache
+
     def __iter__(self):
-        raise NotImplementedError
-          
+        for item in self.package_database:
+            yield self.create_item({"Name": item, "Version": "(aur)"})
+
     def search(self, **kw):
-        if "name" in kw:
-            data = {"type":"search", "arg":kw["name"]}
-            res = eval(urllib.urlopen(self.rpc_url % data).read())["results"]
-            
-            return [] if isinstance(res, str) else [self.create_item(p) for p in res]
-    
+        if "name" in kw and kw["name"] in self.package_database:
+            data = {"type": "search", "arg": kw["name"]}
+            rpc_url = self.config.aur_url + self.config.rpc_command
+            res = eval(urllib.urlopen(rpc_url % data).read())["results"]
+
+            return [] if isinstance(res, str) \
+                   else [self.create_item(p) for p in res]
+
     def create_item(self, dct):
         return Item.AURPackageItem(dct)
-        
+
 class GroupList(LazyList):
     def create_item(self, raw_data):
         return Item.GroupItem(raw_data)
@@ -143,5 +169,5 @@ class StringList(LazyList):
             if what in s:
                 return True
         return False
-        
-        
+
+

@@ -16,8 +16,10 @@ class AbstractItem(object):
     non_pacman_attributes, attributes, ctype, extract, cdesc, local_key_map = [], None, None, None, None, {}
     def __init__(self, raw_data):
         """The raw_data _must_ be either 'alpm_list_t' or the ctype of the calling creating class"""
-        self.raw_data = self.extract(raw_data) if raw_data.__class__.__name__ == "alpm_list_t" else raw_data 
+        self.raw_data = self.extract(raw_data) if raw_data.__class__.__name__ == "alpm_list_t" else raw_data
+        self.init_non_pacman_attributes()
 
+    def init_non_pacman_attributes(self):
         for att in self.non_pacman_attributes:
             setattr(self, att, None)
 
@@ -27,38 +29,38 @@ class AbstractItem(object):
             return self.get_info(key)
         except KeyError, e:
             raise AttributeError(key)
-    
+
     def __eq__(self, other):
         """Only comparing to same classinstances - to accomplish ordering"""
         if isinstance(other, self.__class__):
             return all( self.get_info(k) == other.get_info(k) for k in self.attributes )
         raise TypeError("Cannot compare instance of %s with %s" % (self.__class__.__name__, other.__class__.__name__))
-    
+
     def __str__(self):
         content = [ "%s='%s'" % (k, self.get_info(k)) for k in self.attributes + self.non_pacman_attributes]
         return "<%s %s>" % (self.__class__.__name__, " ".join(content))
     __repr__  = __str__
-    
+
     def __getitem__(self, key):
         return self.get_info(key)
-    
+
     def get_info(self, key):
         """Called from __getattr__ to ask for item-data. This method gets the data
            directly from the backend and maps it to a python object according to local_map by key
-           or respectivly GLOBAL_MAP by type. Additionally it will return the data from one of the 
+           or respectivly GLOBAL_MAP by type. Additionally it will return the data from one of the
            non_pacman_attributes."""
-        
+
         # catch non c-lib/pacman attributes
         if key in self.non_pacman_attributes:
             craw = object.__getattribute__(self, key)
         else:
-            # get data from c-lib            
+            # get data from c-lib
             try:
                 craw = getattr(p, "alpm_%s_get_%s" % (self.cdesc, key))(self.raw_data)
             except AttributeError, e:
                 raise KeyError("An instance of %s contains info for: '%s' but not: '%s'" % \
                     (self.__class__.__name__, ", ".join(self.attributes), key))
-        
+
         # return manipulated value if key in local_key_map
         # if not found, use more general GLOBAL_TYPE_MAP top manipulate value
         # (the keys in GLOBAL_TYPE_MAP are the c-types used in the library)
@@ -67,12 +69,14 @@ class AbstractItem(object):
         except KeyError, e:
             return GLOBAL_TYPE_MAP[craw.__class__.__name__](craw)
 
-       
+
 class PackageItem(AbstractItem):
-    all_attributes = ["name", "arch", "version", "size", "filename", "desc", "url", "builddate", 
-                      "installdate", "packager", "md5sum", "isize", "reason", "licenses", "groups", 
-                      "depends", "optdepends", "conflicts", "provides", "deltas", "replaces", "files", "backup" ]
-    
+    all_attributes = ["name", "arch", "version", "size", "filename", "desc",
+                      "url", "builddate", "installdate", "packager", "md5sum",
+                      "isize", "reason", "licenses", "groups", "depends",
+                      "optdepends", "conflicts", "provides", "deltas",
+                      "replaces", "files", "backup" ]
+
     attributes = ["name", "arch", "version", "size"]
     non_pacman_attributes = ["repo"]
     ctype = "pmpkg_t"
@@ -80,7 +84,7 @@ class PackageItem(AbstractItem):
     cdesc = "pkg"
 
     local_key_map = { "reason" : FancyReason, "size" : FancySize, "isize" : FancySize,
-                      "builddate" : FancyDateTime, "installdate" : FancyDateTime, 
+                      "builddate" : FancyDateTime, "installdate" : FancyDateTime,
                       "depends" : List.DependencyList }
 
 class SyncPackageItem(AbstractItem):
@@ -90,13 +94,15 @@ class SyncPackageItem(AbstractItem):
 
 class AURPackageItem(AbstractItem):
     # this was non-avoidable, aur-naming doesn't follow the pacman naming scheme :(
-    __aur_attributes = {"Version":"version", "Name":"name", "License":"license", 
-                        "URLPath":"urlpath", "URL":"url", "Description":"desc", 
-                        "OutOfDate":"outofdate", "NumVotes":"votes", "ID":"id", 
+    __aur_attributes = {"Version":"version", "Name":"name", "License":"license",
+                        "URLPath":"urlpath", "URL":"url", "Description":"desc",
+                        "OutOfDate":"outofdate", "NumVotes":"votes", "ID":"id",
                         "CategoryID":"category_id", "LocationID":"location_id"}
     non_pacman_attributes = __aur_attributes.values() + ["repo"]
-    attributes = ["name", "version"]                 
+    attributes = ["name", "version"]
     def __init__(self, dct):
+        self.init_non_pacman_attributes()
+
         for k,v in dct.items():
             setattr(self, self.__aur_attributes[k], v)
 
@@ -147,8 +153,8 @@ GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
                       "str"              : str,
                       "long"             : long,
                       "NoneType"         : lambda a: None }
-                
-                
+
+
 
 
 
