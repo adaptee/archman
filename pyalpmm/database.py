@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
+"""
+
+database.py
+-----------
+
+This module implements the database middleware between libalpm and pyalpmm.
+
+The DatabaseManager is the API to the alpm library and also manages the
+different databases and presents them to the outer world through a consistent
+API.
+
+"""
 
 from time import time
 from itertools import chain
 import re
 import os
 import urllib
-
 
 import pyalpmm_raw as p
 from item import PackageItem
@@ -15,9 +26,12 @@ from tools import CriticalError
 class DatabaseError(CriticalError):
     pass
 
-
 class DatabaseManager(object):
-    """Each database can be accessed through self[tree] (tree could be "core", "extra"...)"""
+    """
+    Handles the different repositories and databases. Most use-cases will
+    nicely fit into the methods this class provides, which are mainly to
+    search/examine/compare different packages from different repositories.
+    """
     dbs = {}
     local_dbs = {}
     sync_dbs = {}
@@ -49,23 +63,29 @@ class DatabaseManager(object):
         del self.dbs[tree]
 
     def register(self, tree, db):
-        """Register a new database"""
+        """Register a new database to the libalpm backend"""
         if issubclass(db.__class__, AbstractDatabase):
             db.tree = tree
             self[tree] = db
             if tree == "local":
                 self.local_dbs = {"local": db}
             else:
-                self.sync_dbs = dict((k,x) for k,x in self.dbs.items() if issubclass(x.__class__, SyncDatabase))
+                self.sync_dbs = dict((k,x) for k,x in self.dbs.items() \
+                                     if issubclass(x.__class__, SyncDatabase))
         else:
-            raise DatabaseError("Second parameter in register() must be an AbstractDatabase successor, but is: %s" % db)
+            raise DatabaseError(("Second parameter in register() must be an "
+                                 "AbstractDatabase successor, but is: %s" % db))
 
-    def update_dbs(self, dbs=None, force=False, collect_exceptions=True):
-        """Update all DBs or those listed in dbs"""
+    def update_dbs(self, dbs=None, force=None, collect_exceptions=True):
+        """
+        Update all DBs or those listed in dbs. If 'force' is set,
+        then all DBs will be updated. If 'collect_expressions' is set to
+        False, then a un-successful database update will raise a DatabaseError
+        """
         iterlist = dbs if dbs is not None else self.sync_dbs.keys()
-        force = force if force is not None else False
-        out = []
-        exceptions = []
+        force = force is not None
+        out, exceptions = [], []
+
         for tree in iterlist:
             if isinstance(self.dbs[tree], SyncDatabase):
                 try:
@@ -102,13 +122,15 @@ class DatabaseManager(object):
                 yield pkg
 
     def search_local_package(self, **kwargs):
+        """A shortcut to search all local packages for the given query"""
         return self.search_package(repo=self.local_dbs.keys(), **kwargs)
 
     def search_sync_package(self, **kwargs):
+        """A shortcut to search the sync repositories for the given query"""
         return self.search_package(repo=self.sync_dbs.keys(), **kwargs)
 
     def get_packages(self, dbs=None):
-        """Get all packages from all databases (this is lazy evaluated)"""
+        """Get all packages from all databases, actually returns an iterator"""
         for db in dbs or self.dbs.keys():
             pkglist = self[db].get_packages()
             if pkglist is None:
@@ -119,110 +141,132 @@ class DatabaseManager(object):
                 yield pkg
 
     def get_local_packages(self):
+        """Returns an iterator over all local packages - shortcut"""
         return self.get_packages(self.local_dbs.keys())
 
     def get_sync_packages(self):
+        """Returns an iterator over all sync repository packages - shortcut"""
         return self.get_packages(self.sync_dbs.keys())
 
     def get_groups(self, dbs=None):
-        """Get all groups from all databases (this is lazy evaluated)"""
+        """Get all groups from all databases"""
         return chain(*[self[p].get_groups() for p in dbs or self.dbs.keys()])
 
     def get_local_groups(self):
+        """Get only locally available groups - shortcut"""
         return self.get_groups(self.local_dbs.keys())
 
     def get_sync_groups(self):
+        """Get all sync-able groups"""
         return self.get_groups(self.sync_dbs.keys())
 
     # this maybe private and with repo as mandatory argument
-    def get_package(self, n, repos):
+    def get_package(self, pkgname, repos):
         """Return package either for sync or for local repo"""
         repo = None
-        if "/" in n:
-            sp = n.index("/")
-            n, repo = n[sp+1:], n[:sp]
-            return self.get_package(n, repo=repo)
+        if "/" in pkgname:
+            sp = pkgname.index("/")
+            pkgname, repo = pkgname[sp+1:], pkgname[:sp]
+            found = [x for x in self.dbs[repo].search_package(name=pkgname) \
+                     if x.name == pkgname]
+        else:
+            assert repos in ["sync", "local"]
+            method = self.search_sync_package if repos == "sync" \
+                   else self.search_local_package
 
-        assert repos in ["sync", "local"]
-        method = self.search_sync_package if repos == "sync" \
-               else self.search_local_package
-
-        found = [x for x in method(name=n) if x.name == n]
+            found = [x for x in method(name=pkgname) if x.name == pkgname]
 
         if len(found) == 0:
-            raise DatabaseError("'%s' was not found" % n)
+            raise DatabaseError("'%s' was not found" % pkgname)
         elif len(found) > 1:
             raise DatabaseError("'%s' is ambigous, found in repos: %s" % (
-                n,
+                pkgname,
                 ", ".join(x.repo for x in found)
             ))
         return found[0]
 
-    def get_local_package(self, n):
-        return self.get_package(n, repos="local")
+    def get_local_package(self, pkgname):
+        """Get info about one package 'pkgname', from the local repository"""
+        return self.get_package(pkgname, repos="local")
 
-    def get_sync_package(self, n):
-        return self.get_package(n, repos="sync")
+    def get_sync_package(self, pkgname):
+        """Get info about one remote-package called 'pkgname'"""
+        return self.get_package(pkgname, repos="sync")
 
-    def get_group(self, n, repo=None):
-        """Get one group by name (optional repo arg will only search in that DB)"""
+    def get_group(self, pkgname, repo=None):
+        """
+        Get one group by name
+        (optional 'repo' arg is to search only in one specific database)
+        """
         src = (self.get_all_groups() if repo is None \
             else self.dbs[repo].get_groups())
         for gr in src:
-            if gr.name == n:
+            if gr.name == pkgname:
                 return gr
         return None
 
 class AbstractDatabase(object):
+    """Implements an abstract interface to one database"""
     def __del__(self):
         p.alpm_db_unregister(self.db)
 
     def search_package(self, **kwargs):
+        """Search this database for a given query"""
         return self.get_packages().search(**kwargs)
 
     def get_packages(self):
+        """Get all available packages in this database"""
         return PackageList(p.alpm_db_getpkgcache(self.db))
 
     def get_groups(self):
+        """Get all available groups in this database"""
         return GroupList(p.alpm_db_getgrpcache(self.db))
 
 class LocalDatabase(AbstractDatabase):
+    """Represents the local database"""
     def __init__(self):
         self.db = p.alpm_db_register_local()
         self.tree = "local"
 
 class SyncDatabase(AbstractDatabase):
+    """Represents any sync-able or remote database"""
     def __init__(self, tree, url):
         self.db = p.alpm_db_register_sync(tree)
         self.tree = tree
         if p.alpm_db_setserver(self.db, url) == -1:
-            raise DatabaseError("Could not connect database: %s to server: %s" % (tree, url))
+            raise DatabaseError(
+                "Could not connect database: %s to server: %s" % (tree, url))
 
     def update(self, force=None):
+        """Call the underlying c-function to update the database"""
         r = p.alpm_db_update(force, self.db)
         if r < 0:
-            raise DatabaseError("Database '%s' could not be updated" % self.tree)
+            raise DatabaseError(
+                "Database '%s' could not be updated" % self.tree)
         elif r == 1:
             return False
         return True
 
 class AURDatabase(SyncDatabase):
+    """Represents the AUR"""
     def __init__(self, config):
         self.config = config
         self.tree = "aur"
 
     def get_packages(self):
+        """Just give the AURPackageList, which wrapps all queries"""
         return AURPackageList(self.config)
 
     def get_groups(self):
+        """There are no groups in AUR, so just returns an empty list"""
         # no grps in aur used (afaik?!)
         return []
 
     def update(self, force=None):
+        """Update the AUR database cache"""
         # we cannot decide wheather we have a fresh or old aur-db-cache,
         # so if an update is triggered, just asume we need a new one
         return AURPackageList.refresh_db_cache(
             self.config.aur_db_path,
-            self.config.aur_url
+            self.config.aur_url + self.config.aur_pkg_dir
         )
-

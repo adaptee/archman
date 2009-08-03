@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+
+pbuilder.py
+-----------
+
+This module handles the building of packages directly from the source. As there
+is no libalpm interface for building packages the fastest solution was wrapping
+_makepkg_ to accomplish automated building of packages.
+"""
+
 import os, sys
 import shutil
 import tarfile
@@ -12,23 +23,32 @@ class BuildError(CriticalError):
     pass
 
 class PackageBuilder(object):
+    """Manages the building process"""
     def __init__(self, session, pkg_obj):
         self.session = session
         self.events = session.config.events
         self.pkg = pkg_obj
-        self.path = os.path.join(self.session.config.build_dir, pkg_obj.repo, pkg_obj.name)
+        self.path = os.path.join(
+            self.session.config.build_dir,
+            pkg_obj.repo,
+            pkg_obj.name
+        )
         self.pkgfile_path = None
 
     def cleanup(self):
-        """delete (without complaining if not found) the complete
-           target package build directory"""
+        """
+        delete (without complaining if not found) the complete target package
+        build directory and all its subdirectories
+        """
         shutil.rmtree(self.path, True)
         self.events.DoneBuildDirectoryCleanup()
 
     def prepare(self):
-        """Prepare means:
-               - decide if we have a AUR or ABS package to build
-               - download the required scripts to build"""
+        """
+        Prepare means:
+            - decide if we have a AUR or ABS package to build
+            - download the required scripts to build
+        """
 
         c = self.session.config
         if isinstance(self.pkg, PackageItem):
@@ -47,19 +67,25 @@ class PackageBuilder(object):
             self.events.StartAURBuildPrepare()
 
             # get and extract
-            url = c.aur_url + c.aur_pkg_dir + self.pkg.name + "/" + self.pkg.name + ".tar.gz"
+            url = c.aur_url + c.aur_pkg_dir + self.pkg.name + "/" + \
+                self.pkg.name + ".tar.gz"
+            # we hold the whole thing in RAM, hmm FIXME
             to = tarfile.open(fileobj=StringIO(urllib.urlopen(url).read()))
             to.extractall(os.path.dirname(self.path))
             to.close()
         else:
-            raise BuildError("The passed pkg was not an instance of (AUR)PackageItem, more a '%s'" % type(pkg_obj).__name__)
+            raise BuildError(("The passed pkg was not an instance of "
+                              "(AUR)PackageItem, more a '%s'") \
+                              % type(pkg_obj).__name__)
 
         self.events.DoneBuildPrepare()
 
     def build(self):
-        """building is done with the given uid inside a fork,
-           if PKGBUILD is found and we can change into the directory.
-           If successful set self.pkgfile_path to built package"""
+        """
+        building is done with the given uid inside a fork,
+        only if PKGBUILD is found and we can change into the directory.
+        If successful, set self.pkgfile_path to built package
+        """
 
         self.events.StartBuild(pkg=self.pkg)
         c = self.session.config
@@ -103,13 +129,16 @@ class PackageBuilder(object):
                              "build\nor check the build-dir for problems: %s" %
                              c.build_dir )
 
-    # this maybe should callback something to accomplish editing inside a gui
+    # TODO: this maybe should callback so you could have a gui editor easily
     def edit(self):
         """Edit the PKGBUILD with an editor invoked by 'editor_command'"""
 
         self.events.StartBuildEdit()
 
-        if os.system("%s %s" % (self.session.config.editor_command, os.path.join(self.path, "PKGBUILD"))) != 0:
+        if os.system("%s %s" % (
+            self.session.config.editor_command,
+            os.path.join(self.path, "PKGBUILD")
+        )) != 0:
             raise BuildError("Editor returned error, aborting build")
 
         self.events.DoneBuildEdit()

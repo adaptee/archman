@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+"""
+
+session.py
+-----------
+
+This is the session module, which could be seen as a clue between the different
+parts of pyalpmm.
+
+A session always keeps the PyALPMConfigure instance as 'config' and the
+DatabaseManager instance as 'db_man'.
+"""
 
 import os, sys
 
@@ -12,16 +23,19 @@ class SessionError(CriticalError):
     pass
 
 class Session(object):
+    """Represents a session between libalpm and pyalpmm"""
     def __init__(self, config):
 
         config.events.StartInitSession()
 
+        # init alpm
         if p.alpm_initialize() == -1:
             raise SessionError("Could not initialize session (alpm_initialize)")
 
         self.config = config
         p.alpm_option_set_root(config.rootpath)
 
+        # set up and register databases
         if p.alpm_option_set_dbpath(config.local_db_path) == -1:
             raise SessionError("Could not open the database path: %s" % \
                                config.local_db_path)
@@ -46,6 +60,10 @@ class Session(object):
 
 
     def apply_config(self):
+        """
+        Apply some special options to the libalpm session at the end of
+        initilization.
+        """
         backend_options = ["holdpkgs",
                            "ignorepkgs",
                            "ignoregrps",
