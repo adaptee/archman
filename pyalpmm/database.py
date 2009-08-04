@@ -133,9 +133,6 @@ class DatabaseManager(object):
         """Get all packages from all databases, actually returns an iterator"""
         for db in dbs or self.dbs.keys():
             pkglist = self[db].get_packages()
-            if pkglist is None:
-                continue
-
             for pkg in pkglist:
                 pkg.repo = db
                 yield pkg

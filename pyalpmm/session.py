@@ -25,7 +25,6 @@ class SessionError(CriticalError):
 class Session(object):
     """Represents a session between libalpm and pyalpmm"""
     def __init__(self, config):
-
         config.events.StartInitSession()
 
         # init alpm
@@ -81,3 +80,16 @@ class Session(object):
         #p.alpm_option_set_xfercommand(const char *cmd)
 
         self.config.events.DoneApplyConfig()
+
+
+class System(object):
+    """
+    The highest-level API from pyalpmm, changing the system entirely
+    with just some lines of code
+    """
+    pass
+
+    # alpm_list_t *deps = alpm_deptest(alpm_option_get_localdb(), targets);
+
+
+
