@@ -204,11 +204,11 @@ elif options.query or (options.query and options.sync):
                    "only the local repository can be searched." % args[0])
 
     elif options.sync:
-        print "[+] listing all sync availible packages"
+        print "[+] listing all sync available packages"
         for pkg in session.db_man.get_sync_packages():
             print "[i] %s/%s %s" % (pkg.repo, pkg.name, pkg.version)
     else:
-        print "[+] listing all localy installed packages"
+        print "[+] listing all locally installed packages"
         for pkg in session.db_man.get_local_packages():
             print "[i] %s %s" % (pkg.name, pkg.version)
 
