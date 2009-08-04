@@ -280,6 +280,7 @@ class Transaction(object):
                 p.alpm_strerror(errno), errno))
 
 class SyncTransaction(Transaction):
+    """Sync the 'targets' with the system"""
     trans_type = p.PM_TRANS_TYPE_SYNC
 
     def get_targets(self):
@@ -289,7 +290,7 @@ class RemoveTransaction(Transaction):
     """Remove the given 'targets' from the system"""
     trans_type = p.PM_TRANS_TYPE_REMOVE
 
-    def __init__(self, session, targets = None):
+    def __init__(self, session, targets=None):
         super(RemoveTransaction, self).__init__(session, targets=targets)
 
         self.pkg_search_list = self.session.db_man["local"].get_packages()
@@ -324,13 +325,13 @@ class SysUpgradeTransaction(SyncTransaction):
         For preperation there is a special C function, which we use to
         get the needed targets into the transaction
         """
-        if  p.alpm_trans_sysupgrade() == -1:
+        if p.alpm_trans_sysupgrade() == -1:
             raise TransactionError("The SystemUpgrade failed")
         super(SysUpgradeTransaction, self).prepare()
 
 class DatabaseUpdateTransaction(SyncTransaction):
     """Update all (or just the passed) databases"""
-    def __init__(self, session, dbs = None):
+    def __init__(self, session, dbs=None):
         super(DatabaseUpdateTransaction, self).__init__(session)
         self.target_dbs = dbs
 

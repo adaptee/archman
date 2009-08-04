@@ -133,7 +133,7 @@ config = PyALPMMConfiguration(events,
                               cmd_args=options)
 
 # uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
-events.logfile = config.logfile
+#events.logfile = config.logfile
 
 session = Session(config)
 
@@ -146,6 +146,7 @@ if options.force or options.nodeps or options.download_only:
 if options.delete_lockfile:
     if config.rights != "root":
         print "[e] You must be root to delete the database lockfile: %s" % config.lockfile
+        sys.exit(1)
 
     if os.path.exists(config.logfile):
         os.unlink(config.logfile)
@@ -154,6 +155,10 @@ if options.delete_lockfile:
         print "[-] There is no need to delete the db_lock_file: %s" % config.lockfile
 
 if options.update:
+    if config.rights != "root":
+        print "[e] You must be root to update the database"
+        sys.exit(1)
+
     try:
         with DatabaseUpdateTransaction(session) as transobj:
             transobj.aquire()
@@ -208,6 +213,10 @@ elif options.query or (options.query and options.sync):
             print "[i] %s %s" % (pkg.name, pkg.version)
 
 elif options.remove or options.sync or options.upgrade:
+    if config.rights != "root":
+        print "[e] You must be root to update/remove"
+        sys.exit(1)
+
     if options.remove:
         transobj = RemoveTransaction(session, targets=args)
     elif options.upgrade:
@@ -239,6 +248,11 @@ elif options.remove or options.sync or options.upgrade:
         print "[e] %s" % e
 
 elif options.build:
+    if config.rights != "root":
+        print ("[e] You must be root to build with mmacman, it will change "
+               "the user for you while building")
+        sys.exit(1)
+
     pkg = session.db_man.get_sync_package(args[0])
     p = PackageBuilder(session, pkg)
 

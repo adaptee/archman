@@ -82,7 +82,7 @@ class DatabaseManager(object):
         then all DBs will be updated. If 'collect_expressions' is set to
         False, then a un-successful database update will raise a DatabaseError
         """
-        iterlist = dbs if dbs is not None else self.sync_dbs.keys()
+        iterlist = dbs or self.sync_dbs.keys()
         force = force is not None
         out, exceptions = [], []
 
@@ -108,8 +108,10 @@ class DatabaseManager(object):
 
 
     def search_package(self, repo=None, **kwargs):
-        """Search for a package (in the given repos) with given properties
-           i.e. pass name="xterm" """
+        """
+        Search for a package (in the given repos) with given properties
+        i.e. pass name="xterm"
+        """
         used_dbs = self.dbs.values() if not repo else \
                    (repo if isinstance(repo, (tuple, list, set)) else [repo])
 
