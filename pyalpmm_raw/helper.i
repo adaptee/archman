@@ -19,18 +19,8 @@ pmdepmissing_t *helper_list_getmiss(alpm_list_t *item){
 }
 
 pmdepend_t *helper_list_getdep(alpm_list_t *item){
-    pmdepend_t *tmp;
-    tmp = (pmdepend_t*) alpm_list_getdata(item);
-    printf("HASIDIHSADHIASD C++++");
-    char *s;
-    s = tmp->name;
-    printf("%s", &s);
-    return tmp;
+    return (pmdepend_t*) alpm_list_getdata(item);
 }
-
-//pmpkg_t *helper_list_getsyncpkg(alpm_list_t *item){
-//    return alpm_sync_get_pkg((pmsyncpkg_t *) alpm_list_getdata(item));
-//}
 
 pmfileconflict_t *helper_list_getfileconflict(alpm_list_t *item){
     return (pmfileconflict_t*) alpm_list_getdata(item);
