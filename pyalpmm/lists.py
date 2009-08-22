@@ -75,12 +75,6 @@ class LazyList(object):
             ", ".join(str(s) for s in self)
         )
 
-class SyncPackageList(LazyList):
-    """Holds SyncPackageItem objects"""
-    def create_item(self, raw_data):
-        """Create and return the SyncPackageItem just created for 'raw_data'"""
-        return Item.SyncPackageItem(raw_data)
-
 class MissList(LazyList):
     """Holds MissItem objects"""
     def create_item(self, raw_data):

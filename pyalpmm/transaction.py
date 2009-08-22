@@ -27,7 +27,7 @@ import pyalpmm_raw as p
 from pyalpmm.database import *
 from pyalpmm.tools import AskUser, CriticalError, UserError
 from pyalpmm.lists import MissList, StringList, DependencyList, \
-     SyncPackageList, FileConflictList
+     FileConflictList
 from pyalpmm.item import PackageItem
 from pyalpmm import Events
 
@@ -283,7 +283,7 @@ class SyncTransaction(Transaction):
     trans_type = p.PM_TRANS_TYPE_SYNC
 
     def get_targets(self):
-        return SyncPackageList(p.alpm_trans_get_pkgs())
+        return PackageList(p.alpm_trans_get_pkgs())
 
 class RemoveTransaction(Transaction):
     """Remove the given 'targets' from the system"""

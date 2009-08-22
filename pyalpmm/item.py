@@ -136,18 +136,6 @@ class PackageItem(AbstractItem):
                      "isize" : FancySize, "builddate" : FancyDateTime,
                      "installdate" : FancyDateTime, "size" : FancySize}
 
-# quickfix for the missing pmsync_t type since 3.3?
-class SyncPackageItem(PackageItem):
-    pass
-
-#    """
-#    At some events libalpm passes a SyncPackageItem to the event callback,
-#    (forgot which ones exactlly^^)
-#    """
-#    attributes = ["name", "version"]
-#    extract = p.helper_list_getsyncpkg
-#    cdesc = "pkg"
-
 class AURPackageItem(AbstractItem):
     """
     This is still a little messy here. But at this point I doubt I have no
@@ -210,7 +198,6 @@ class FileConflictItem(AbstractItem):
     local_key_map = {"type" : FancyFileConflictType }
 
 GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
-                      "pmsyncpkg_t"      : SyncPackageItem,
                       "pmpkg_t"          : PackageItem,
                       "pmdepmissing_t"   : MissItem,
                       "pmdepend_t"       : DependencyItem,
