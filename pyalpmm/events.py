@@ -115,7 +115,7 @@ class Events:
             return 1
         return 0
 
-    def AskRemoveHoldPkg(self, **kw):
+    def AskRemovePkg(self, **kw):
         """
         A member of the HoldPkg list is about to be removed.
 

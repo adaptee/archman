@@ -19,7 +19,13 @@ pmdepmissing_t *helper_list_getmiss(alpm_list_t *item){
 }
 
 pmdepend_t *helper_list_getdep(alpm_list_t *item){
-    return (pmdepend_t*) alpm_list_getdata(item);
+    pmdepend_t *tmp;
+    tmp = (pmdepend_t*) alpm_list_getdata(item);
+    printf("HASIDIHSADHIASD C++++");
+    char *s;
+    s = tmp->name;
+    printf("%s", &s);
+    return tmp;
 }
 
 //pmpkg_t *helper_list_getsyncpkg(alpm_list_t *item){

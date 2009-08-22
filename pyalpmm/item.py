@@ -90,6 +90,7 @@ class AbstractItem(object):
         to local_map by key or respectivly GLOBAL_MAP by type. Additionally it
         will return the data from one of the non_pacman_attributes.
         """
+
         # catch non c-lib/pacman attributes
         if key in self.non_pacman_attributes:
             craw = object.__getattribute__(self, key)

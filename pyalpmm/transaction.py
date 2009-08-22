@@ -40,13 +40,12 @@ class TransactionError(CriticalError):
     def __init__(self, msg, ml = None, cl = None):
         if ml:
             self.misslist = ml
-            msg += "\n"
             for item in ml:
                 msg += "\n[i] Dependency %s for %s could not be satisfied" % (
-                    item.dep.name, item.target)
+                    item.target, item.dep.name
+                )
         elif cl:
             self.conflictlist = cl
-            msg += "\n"
             for item in cl:
                 if item.type == p.PM_FILECONFLICT_TARGET:
                     msg += "\n[i] %s: %s (pkg: %s and conflict pkg: %s)" % (
@@ -122,7 +121,6 @@ class Transaction(object):
 
         if len(self.get_targets()) == 0:
             raise TransactionError("Nothing to be done...")
-
         self.events.DoneTransactionPrepare()
 
     def __enter__(self):
@@ -175,8 +173,8 @@ class Transaction(object):
             if self.session.config.download_only:
                 return 1
             return self.events.AskUpgradeLocalNewer(pkg=PackageItem(data1))
-        elif event == p.PM_TRANS_CONV_REMOVE_HOLDPKG:
-            return self.events.AskRemoveHoldPkg(pkg=PackageItem(data1))
+        elif event == p.PM_TRANS_CONV_REMOVE_PKGS:
+            return self.events.AskRemovePkg(pkg=PackageItem(data1))
         elif event == p.PM_TRANS_CONV_REPLACE_PKG:
             return self.events.AskReplacePkg(
                 pkg=PackageItem(data1), rep_pkg=PackageItem(data2), repo=data3)
@@ -267,11 +265,12 @@ class Transaction(object):
     def handle_error(self, errno):
         """Hardcoding err numbers is evil, still error handling is a big task"""
 
-        if errno == 38:
+
+        if errno == p.PM_ERR_UNSATISFIED_DEPS:
             ml = MissList(p.get_list_from_ptr(self.__backend_data))
             raise TransactionError("ALPM error: %s (%s)" % (
                 p.alpm_strerror(errno), errno), ml=ml)
-        elif errno == 40:
+        elif errno == p.PM_ERR_FILE_CONFLICTS:
             cl = FileConflictList(p.get_list_from_ptr(self.__backend_data))
             raise TransactionError("ALPM error: %s (%s)" % (
                 p.alpm_strerror(errno), errno), cl=cl)
