@@ -148,8 +148,8 @@ if options.delete_lockfile:
         print "[e] You must be root to delete the database lockfile: %s" % config.lockfile
         sys.exit(1)
 
-    if os.path.exists(config.logfile):
-        os.unlink(config.logfile)
+    if os.path.exists(config.lockfile):
+        os.unlink(config.lockfile)
         print "[+] Successfully deleted the db_lock_file: %s" % config.lockfile
     else:
         print "[-] There is no need to delete the db_lock_file: %s" % config.lockfile
