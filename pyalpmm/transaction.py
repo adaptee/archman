@@ -325,7 +325,7 @@ class SysUpgradeTransaction(SyncTransaction):
         For preperation there is a special C function, which we use to
         get the needed targets into the transaction
         """
-        if p.alpm_trans_sysupgrade() == -1:
+        if p.alpm_trans_sysupgrade(self.session.config.allow_downgrade) == -1:
             raise TransactionError("The SystemUpgrade failed")
         super(SysUpgradeTransaction, self).prepare()
 

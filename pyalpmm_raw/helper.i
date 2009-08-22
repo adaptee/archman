@@ -22,9 +22,9 @@ pmdepend_t *helper_list_getdep(alpm_list_t *item){
     return (pmdepend_t*) alpm_list_getdata(item);
 }
 
-pmpkg_t *helper_list_getsyncpkg(alpm_list_t *item){
-    return alpm_sync_get_pkg((pmsyncpkg_t *) alpm_list_getdata(item));
-}
+//pmpkg_t *helper_list_getsyncpkg(alpm_list_t *item){
+//    return alpm_sync_get_pkg((pmsyncpkg_t *) alpm_list_getdata(item));
+//}
 
 pmfileconflict_t *helper_list_getfileconflict(alpm_list_t *item){
     return (pmfileconflict_t*) alpm_list_getdata(item);
@@ -43,15 +43,15 @@ alpm_list_t *get_list_from_ptr(alpm_list_t **d){
 alpm_list_t *helper_create_alpm_list(PyObject *list) {
     int i;
     alpm_list_t *out = NULL;
-    
+
     for(i=0; i<PyList_Size(list); ++i)
         out = alpm_list_add(out, PyString_AsString(PyList_GetItem(list, i)));
-    return out;              
+    return out;
 }
 
-char *helper_get_char(PyObject *str){ 
-    return PyString_AsString(str);    
-}                                     
+char *helper_get_char(PyObject *str){
+    return PyString_AsString(str);
+}
 
 int get_errno(){
     return (int) pm_errno;

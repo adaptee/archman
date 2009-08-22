@@ -227,6 +227,7 @@ class PyALPMMConfiguration(ConfigMapper):
     download_only = CommandlineItem(0)
     force = CommandlineItem(0)
     nodeps = CommandlineItem(0)
+    allow_downgrade = CommandlineItem(1)
 
     # need this, because the lockfile is not known on class create
     lockfile = property(lambda s: p.alpm_option_get_lockfile())

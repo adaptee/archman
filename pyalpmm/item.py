@@ -135,14 +135,17 @@ class PackageItem(AbstractItem):
                      "isize" : FancySize, "builddate" : FancyDateTime,
                      "installdate" : FancyDateTime, "size" : FancySize}
 
-class SyncPackageItem(AbstractItem):
-    """
-    At some events libalpm passes a SyncPackageItem to the event callback,
-    (forgot which ones exactlly^^)
-    """
-    attributes = ["name", "version"]
-    extract = p.helper_list_getsyncpkg
-    cdesc = "pkg"
+# quickfix for the missing pmsync_t type since 3.3?
+class SyncPackageItem(PackageItem):
+    pass
+
+#    """
+#    At some events libalpm passes a SyncPackageItem to the event callback,
+#    (forgot which ones exactlly^^)
+#    """
+#    attributes = ["name", "version"]
+#    extract = p.helper_list_getsyncpkg
+#    cdesc = "pkg"
 
 class AURPackageItem(AbstractItem):
     """

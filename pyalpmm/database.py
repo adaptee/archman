@@ -215,11 +215,11 @@ class AbstractDatabase(object):
 
     def get_packages(self):
         """Get all available packages in this database"""
-        return PackageList(p.alpm_db_getpkgcache(self.db))
+        return PackageList(p.alpm_db_get_pkgcache(self.db))
 
     def get_groups(self):
         """Get all available groups in this database"""
-        return GroupList(p.alpm_db_getgrpcache(self.db))
+        return GroupList(p.alpm_db_get_grpcache(self.db))
 
 class LocalDatabase(AbstractDatabase):
     """Represents the local database"""

@@ -6,7 +6,7 @@
 
 %inline %{
 
-    
+
 #include "alpm_list.h"
 #include "alpm.h"
 
@@ -21,13 +21,13 @@ void cb_python_event_wrap(pmtransevt_t event, void *data1, void *data2){
         PyObject *arglist = NULL;
         PyObject *d1 = Py_None;
         PyObject *d2 = Py_None;
-       
+
         switch(event) {
             case PM_TRANS_EVT_ADD_START:
             case PM_TRANS_EVT_ADD_DONE:
             case PM_TRANS_EVT_REMOVE_START:
-            case PM_TRANS_EVT_REMOVE_DONE:    
-            case PM_TRANS_EVT_UPGRADE_START: 
+            case PM_TRANS_EVT_REMOVE_DONE:
+            case PM_TRANS_EVT_UPGRADE_START:
                 d1 = SWIG_NewPointerObj(SWIG_as_voidptr(data1), SWIGTYPE_p___pmpkg_t, 0 );
                 break;
             case PM_TRANS_EVT_UPGRADE_DONE:
@@ -44,7 +44,7 @@ void cb_python_event_wrap(pmtransevt_t event, void *data1, void *data2){
         }
         if (!arglist)
             arglist = Py_BuildValue("(i,O,O)", event, d1, d2);
-     
+
         PyEval_CallObject(py_cb_event, arglist);
         Py_DECREF(arglist);
 
@@ -54,10 +54,10 @@ void cb_python_conv_wrap(pmtransconv_t event, void *data1, void *data2, void *da
         PyObject *d1 = Py_None;
         PyObject *d2 = Py_None;
         PyObject *d3 = Py_None;
-        
+
         switch(event) {
             case PM_TRANS_CONV_INSTALL_IGNOREPKG:
-			    if(data2) { 
+			    if(data2) {
                     d1 = SWIG_NewPointerObj(SWIG_as_voidptr(data1), SWIGTYPE_p___pmpkg_t, 0 );
                     d2 = SWIG_NewPointerObj(SWIG_as_voidptr(data2), SWIGTYPE_p___pmpkg_t, 0 );
 			    } else {
@@ -65,7 +65,7 @@ void cb_python_conv_wrap(pmtransconv_t event, void *data1, void *data2, void *da
 			    }
 			    break;
 		    case PM_TRANS_CONV_LOCAL_NEWER:
-		    case PM_TRANS_CONV_REMOVE_HOLDPKG:
+		    case PM_TRANS_CONV_REMOVE_PKGS:
                 d1 = SWIG_NewPointerObj(SWIG_as_voidptr(data1), SWIGTYPE_p___pmpkg_t, 0 );
 			    break;
 		    case PM_TRANS_CONV_REPLACE_PKG:
@@ -83,7 +83,7 @@ void cb_python_conv_wrap(pmtransconv_t event, void *data1, void *data2, void *da
 	    }
         if (!arglist)
             arglist = Py_BuildValue("(i,O,O,O)", event, d1, d2, d3);
-    
+
         *response = PyInt_AsLong(PyEval_CallObject(py_cb_conv, arglist));
         Py_DECREF(arglist);
 
@@ -99,7 +99,7 @@ void cb_python_dl_total_progress_wrap(off_t total){
         PyObject *arglist = NULL;
         arglist = Py_BuildValue("(i)", total);
         PyEval_CallObject(py_cb_dl_total_progress, arglist);
-        Py_DECREF(arglist);    
+        Py_DECREF(arglist);
 }
 
 void cb_python_dl_progress_wrap(const char *filename, off_t file_xfered, off_t file_total)
@@ -107,13 +107,13 @@ void cb_python_dl_progress_wrap(const char *filename, off_t file_xfered, off_t f
   PyObject *arglist = NULL;
   arglist = Py_BuildValue("(s,i,i)", filename, file_xfered, file_total);
   PyEval_CallObject(py_cb_dl_progress, arglist);
-  Py_DECREF(arglist);  
+  Py_DECREF(arglist);
 }
 
 %}
 
 /*%typemap(in) char * {
-    $1 = PyString_AsString($input);   
+    $1 = PyString_AsString($input);
 }*/
 
 %typemap(out) off_t, time_t {
@@ -169,7 +169,7 @@ void cb_python_dl_progress_wrap(const char *filename, off_t file_xfered, off_t f
     Py_XINCREF($input);
     Py_XDECREF(py_cb_dl_total_progress);
     py_cb_dl_total_progress = $input;
-    $1 = cb_python_dl_total_progress_wrap;    
+    $1 = cb_python_dl_total_progress_wrap;
 }
 
 %include "alpm_list.h"
