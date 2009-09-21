@@ -83,11 +83,23 @@ class IntegerConfigItem(ConfigItem):
     converter = lambda s, v: int(v)
     default = 0
 
-class ListConfigItem(ConfigItem, list):
+class ListConfigItem(ConfigItem):
     """Holds a list of config data"""
     converter = lambda s, v: [x.strip() for x in
                               (v.split(",") if "," in v else v.split(" "))]
     default = []
+
+    def __iter__(self):
+        for item in self._val:
+            yield item
+
+    def __getitem__(self, key):
+        print "get key: %s" % key
+        return self._val[key]
+
+    def __len__(self):
+        return len(self._val)
+
 
 class YesNoConfigItem(ConfigItem):
     """Is either True or False"""

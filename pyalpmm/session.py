@@ -59,8 +59,7 @@ class Session(object):
 
 
     def apply_config(self):
-        """
-        Apply some special options to the libalpm session at the end of
+        """Apply some special options to the libalpm session at the end of
         initilization.
         """
         backend_options = ["holdpkgs",
@@ -72,10 +71,10 @@ class Session(object):
         # applying only listoptions, because 'logfile', 'rootpath'
         # and 'dbroot' are already set somewhere else (
         for opt in backend_options:
-            t = self.config[opt]
-            if t:
-                fn = getattr(p, "alpm_option_set_%s" % opt)
-                fn(p.helper_create_alpm_list(t))
+            confdata = self.config[opt]
+            if len(confdata) > 0:
+                fn = getattr(p, "alpm_option_set_{0}".format(opt))
+                fn(p.helper_create_alpm_list(list(confdata)))
 
         #p.alpm_option_set_xfercommand(const char *cmd)
 
@@ -83,8 +82,7 @@ class Session(object):
 
 
 class System(object):
-    """
-    The highest-level API from pyalpmm, changing the system entirely
+    """The highest-level API from pyalpmm, changing the system entirely
     with just some lines of code
     """
     pass
