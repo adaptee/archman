@@ -170,11 +170,15 @@ class ConfigMapper(object):
     def __contains__(self, key):
         return key in self.cmdline_items.keys() + self.config_items.keys()
 
+    def set_cmdline_arg(self, option_name, value):
+        """Directly set a commandline option to 'value'"""
+        self.cmdline_items[option_name].value = value
+
     def handle_cmdline_args(self, cmdline_args):
         """Copy the needed data from the cmd_args object to the ConfigItem(s)"""
         for cmd, item in self.cmdline_items.items():
-            if hasattr(cmdline_args, cmd):
-                item.value = getattr(cmdline_args, cmd)
+            if cmdline_args and hasattr(cmdline_args, cmd):
+                self.set_cmdline_arg(cmd, getattr(cmdline_args, cmd))
 
     def read_from_file(self):
         """Read configuration from file into the object attributes"""
@@ -193,8 +197,7 @@ class ConfigMapper(object):
 
 
 class PyALPMMConfiguration(ConfigMapper):
-    """
-    The through the whole pyalpmm library used config class, usually there
+    """The through the whole pyalpmm library used config class, usually there
     should be an instance of it around as attribute from a Session instance
     """
     # configuration options
@@ -213,21 +216,25 @@ class PyALPMMConfiguration(ConfigMapper):
 
     aur_support = YesNoConfigItem("aur", True)
     build_quiet = YesNoConfigItem("aur", False)
-    build_dir = StringConfigItem("aur", "/tmp/mmacman_build/")
+    build_dir = StringConfigItem("aur", "/var/cache/pacman/src/aur/")
     abs_dir = StringConfigItem("aur", "/var/abs")
     aur_url = StringConfigItem("aur", "http://aur.archlinux.org/")
+    aur_pkg_dir = StringConfigItem("aur", "packages/")
     rpc_command = StringConfigItem("aur", "rpc.php?type=%(type)s&arg=%(arg)s")
     build_uid = IntegerConfigItem("aur", 1000)
     build_gid = IntegerConfigItem("aur", 100)
     editor_command = StringConfigItem("aur", "vim")
-    aur_db_path = StringConfigItem("aur", "/var/lib/pacman/aur_db_cache")
-    aur_pkg_dir = StringConfigItem("aur", "packages/")
+    #aur_installed_pkgs = StringConfigItem("aur", "/var/lib/pacman/aur_installed_pkgs")
 
     # commandline options
     download_only = CommandlineItem(0)
     force = CommandlineItem(0)
     nodeps = CommandlineItem(0)
     allow_downgrade = CommandlineItem(1)
+    build_edit = CommandlineItem(0)
+    build_install = CommandlineItem(0)
+    build_no_cleanup = CommandlineItem(0)
+    build_no_prepare = CommandlineItem(0)
 
     # need this, because the lockfile is not known on class create
     lockfile = property(lambda s: p.alpm_option_get_lockfile())
@@ -287,7 +294,7 @@ class PyALPMMConfiguration(ConfigMapper):
                    "nodeps": p.PM_TRANS_FLAG_NODEPS}
 
         return sum(flagmap[key] for key, item in self.cmdline_items.items() \
-                   if item.value is True)
+                   if key in flagmap and item.value is True )
 
     def read_from_file(self):
         """

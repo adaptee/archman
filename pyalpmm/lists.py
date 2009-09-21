@@ -17,6 +17,7 @@ import heapq
 from itertools import chain
 import urllib
 import re
+import operator as ops
 
 import pyalpmm_raw as p
 
@@ -24,10 +25,16 @@ import item as Item
 from options import PyALPMMConfiguration as config
 
 class LazyList(object):
-    """
-    Wraps the alpm_list_t C types into a Python object, which can be
+    """Wraps the alpm_list_t C types into a Python object, which can be
     accessed like a regular list.
     """
+
+    search_endings = {
+        "__eq": ops.eq,
+        "__in": lambda q, s: s.find(q) != -1,
+        "__ne": ops.ne
+    }
+
     def __init__(self, raw_list):
         self.raw_list = raw_list
 
@@ -47,6 +54,28 @@ class LazyList(object):
         while cur:
             yield self.create_item(cur)
             cur = p.alpm_list_next(cur)
+
+    def _parse_keywords(self, kw):
+        """This method parses the keyword keys for the known special endings.
+        Return a new dict only with a tuple containing the cleaned up value
+        and then the operator to use for comparision.
+
+        The keys passed in kwargs can have some special endings:
+        "__in"    =>    (default) true if the query is part of the target str
+                        You never have to use this, as this is the (default)
+        "__eq"    =>    check query for equality against the string
+        "__ne"    =>    check for in-equality
+        """
+        query = {}
+        for k, v in kw.items():
+            for ending, operator in self.search_endings.items():
+                if k.endswith(ending):
+                    k = k[:-len(ending)]
+                    query[k] = (v, operator)
+                    break
+            else:
+                query[k] = (v, self.search_endings["__in"])
+        return query
 
     def get_one_item(self, i):
         """Return the item at the index 'i'"""
@@ -96,34 +125,34 @@ class DependencyList(LazyList):
 
 class PackageList(LazyList):
     """Holds PackageItem objects"""
+
     def create_item(self, raw_data):
         """Creates a PackageItem from the passed raw_data"""
         return Item.PackageItem(raw_data)
 
-    def search(self, **kwargs):
-        """
-        This search checks for equality between the given query 'kwargs' and
-        the PackageItem instances kept by the list. Each object is checked,
+    def search(self, **kw):
+        """This search checks if the given query `kw` matches one of the
+        :class:`PackageItem` instances kept by the list. Each object is checked,
         wheater its attributes match the keys and the attribute-values the
         values from the kwargs dict.
 
-        If "name" is passed as key, the "desc" key will be checked against the
-        same value, because this mimics pacman's behaviour.
+        :param kw: keyword arguments with the actual query,
+                   magic endings are supported
         """
-        if "name" in kwargs:
-            kwargs["desc"] = kwargs["name"]
-        res = []
-        for k, v in kwargs.items():
-            res += [
-                pkg for pkg in self \
-                if pkg.get_info(k) and \
-                pkg.get_info(k).lower().find(v.lower()) > -1
-            ]
-        # assure unique-ness
-        return list(set(res))
+        res = set()
+        kw = self._parse_keywords(kw)
+        for pkg in self:
+            if any(op(v.lower(), (pkg.get_info(k) or "").lower()) \
+                   for k, (v, op) in kw.items()):
+                res.add(pkg)
+        return list(res)
 
+    # this method looks a bit obsolete/unused... hmmm
     def order_by(self, k):
-        """Yield the list contents in an order defined by the passed key 'k'"""
+        """Yield the list contents in an order defined by the passed key `k`
+
+        :param k: the key-column, which should be used to order the output
+        """
         lst = [(v.get_info(k),v) for v in self]
         heapq.heapify(lst)
         pop = heapq.heappop
@@ -132,13 +161,12 @@ class PackageList(LazyList):
             yield pop(lst)[1]
 
 class AURPackageList(PackageList):
-    """
-    Holds evil AURPackageItem objects.
+    """Holds evil AURPackageItem objects.
     This class implements a full blown wrapper to work with AURPackages as
     easy as with any other "official" package repository. Data is aquired
-    through RPC and the full package list is taken from the index website on
-    http://aur.archlinux.org/packages/ and loosely parsed. This happens every
-    time you update your databases.
+    through RPC.
+
+    :param config: a :class:`pyalpmm.options.PyALPMMConfiguration` instance
     """
     _package_database_cache = None
     _package_list_pattern = re.compile(r'a href\=\"([^\"]+)\"')
@@ -151,75 +179,64 @@ class AURPackageList(PackageList):
     def __getitem__(self, i):
         return self.create_item({"Name": self.package_database[i],
                                  "Version": "(aur)"})
-    @classmethod
-    def refresh_db_cache(cls, aur_db_path, aur_pkg_url):
-        """
-        Get website, search in it for the occurences of the regex pattern,
-        and save the collected packagelist to a line separated text file near
-        the original libalpm library.
-        """
-        cls._package_database_cache = []
-        with file(aur_db_path, "w") as fd:
-            for line in urllib.urlopen(aur_pkg_url):
-                match = cls._package_list_pattern.search(line)
-                if match:
-                    pkgname = match.group(1)[:-1]
-                    cls._package_database_cache.append(pkgname)
-                    fd.write("%s\n" % pkgname)
-        return len(cls._package_database_cache) > 0
-
-    @property
-    def package_database(self):
-        """
-        This property takes care of the 'self._package_database_cache' access,
-        and knows when to set up a new aur database file.
-        """
-        c = self.config
-        if self._package_database_cache is None:
-            if os.path.exists(c.aur_db_path):
-                with file(c.aur_db_path) as fd:
-                    self._package_database_cache = fd.read().split("\n")[:-1]
-            else:
-                self.refresh_db_cache(c.aur_db_path, c.aur_url + c.aur_pkg_dir)
-        return self._package_database_cache
-
-    def __iter__(self):
-        for item in self.package_database:
-            yield self.create_item({"Name": item, "Version": "(aur)"})
-
     def search(self, **kw):
-        """
-        Search for a package in the AUR. Actually we can only look for
-        the packagename, because we have to query the server. But we can take
-        the 'self.package_database' to "pre-validate" the packagename.
+        """Search for a package with an RPC call to the AUR repository
+        We won't handle any kind of suffix in the kw keys like in PackageList
+        I see no real sense in this, as long as AUR and the regular repos not
+        even have the same naming scheme
 
-        If passed, send the RPC query and eval() (oh my god I know this is evil)
-        the result, this forms a dict, which holds a key "results".
+        :param kw: the search query as a dict
         """
-        if "name" in kw and kw["name"] in self.package_database:
-            data = {"type": "search", "arg": kw["name"]}
-            rpc_url = self.config.aur_url + self.config.rpc_command
-            res = eval(urllib.urlopen(rpc_url % data).read())["results"]
+        kw = self._parse_keywords(kw)
+        data = {"type": "search", "arg": kw["name"][0]}
+        rpc_url = self.config.aur_url + self.config.rpc_command
+        res = eval(urllib.urlopen(rpc_url % data).read())["results"]
+        out = []
 
-            return [] if isinstance(res, str) \
-                   else [self.create_item(p) for p in res]
+        # if result is just a string, we got an error
+        if isinstance(res, str):
+            return []
+
+        candidates = [self.create_item(data_dct) for data_dct in res]
+
+        out = []
+        for pkg in candidates:
+            pkg.repo = "aur"
+            if any(op(v, pkg.get_info(k)) for k, (v, op) in kw.items()):
+                out.append(pkg)
+
+        return out
 
     def create_item(self, dct):
-        """Create a AURPackageItem from a given input 'dct'"""
+        """Create a AURPackageItem from a given input `dct`
+
+        :param dct: the dictionary which holds all the retrieved package data
+        """
         return Item.AURPackageItem(dct)
 
 class GroupList(LazyList):
     """A list for GroupItems"""
     def create_item(self, raw_data):
-        """Create the GroupItem from the input 'raw_data'"""
+        """Create the GroupItem from the input `raw_data`
+
+        :param raw_data: the raw C-data of this group
+        """
         return Item.GroupItem(raw_data)
 
-    def search(self, name):
-        """Return an iterator over the groups containing the 'name' provided"""
-        return (grp for grp in self if grp.name.find(name) > -1)
+    def search(self, **kw):
+        """Return an iterator over the groups matching the keyword conditions.
+
+        :param kw: keyword arguments with the actual query,
+                   magic endings are supported
+        """
+        kw = self._parse_keywords(kw)
+        return (grp for grp in self \
+                if any(op(v, grp.get_info(k)) for k, (v, op) in kw.items()))
 
     def order_by(self, k):
-        """Return the GroupItems ordered"""
+        """Return the :class:`GroupItem` instances ordered
+
+        :param k: the key the ordering is dependent on"""
         li = list(x for x in self)
         li.sort(lambda a,b: (a.get_info(k),b))
         return li
@@ -227,7 +244,7 @@ class GroupList(LazyList):
 class FileConflictList(LazyList):
     """A list of FileConflictItem instances"""
     def create_item(self, raw_data):
-        """Creating a FileConflictItem from 'raw_data'"""
+        """Creating a FileConflictItem from `raw_data`"""
         return Item.FileConflictItem(raw_data)
 
 class StringList(LazyList):

@@ -20,33 +20,62 @@ from tools import AskUser
 class Events:
     last_event, logfile = None, None
     names = (# general events
-             "StartCheckingDependencies", "StartCheckingFileConflicts",
-             "StartResolvingDependencies", "StartCheckingInterConflicts",
-             "StartInstallingPackage", "StartRemovingPackage",
-             "StartUpgradingPackage","StartCheckingPackageIntegrity",
-             "StartRetrievingPackages", "DoneInstallingPackage",
-             "DoneRemovingPackage", "DoneUpgradingPackage",
+             "StartCheckingDependencies",         # ()
+             "StartCheckingFileConflicts",        # ()
+             "StartResolvingDependencies",        # ()
+             "StartCheckingInterConflicts",       # ()
+             "StartInstallingPackage",            # (pkg: PackageItem)
+             "StartRemovingPackage",              # (pkg: PackageItem)
+             "StartUpgradingPackage",             # (pkg: PackageItem)
+             "StartCheckingPackageIntegrity",     # ()
+             "StartRetrievingPackages",           # (repo: str)
+             "DoneInstallingPackage",             # (pkg: PackageItem)
+             "DoneRemovingPackage",               # (pkg: PackageItem)
+             "DoneUpgradingPackage",              # (pkg, from_pkg: PackageItem)
              # alpm "questions"
-             "AskInstallIgnorePkgRequired", "AskInstallIgnorePkg",
-             "AskUpgradeLocalNewer", "AskRemoveHoldPkg", "AskReplacePkg",
-             "AskRemoveConflictingPackage", "AskRemoveCorruptedPackage",
+             "AskInstallIgnorePkgRequired",
+             "AskInstallIgnorePkg",
+             "AskUpgradeLocalNewer",
+             "AskRemoveHoldPkg",
+             "AskReplacePkg",
+             "AskRemoveConflictingPackage",
+             "AskRemoveCorruptedPackage",
              # database updates
-             "DatabaseUpToDate", "DatabaseUpdated",
+             "DatabaseUpToDate",                  # (repo: str)
+             "DatabaseUpdated",                   # (repo: str)
+             "DatabaseUpdateError",               # (repo: str)
+             "StartLocalAURPackageSearch",        # ()
+             "DoneLocalAURPackageSearch",         # (pkgs: list of PackageItem)
+             "DoneAddingAURPackageToInstalledDB", # (pkg: PackageItem)
              # transaction info
-             "DoneTransactionInit", "DoneTransactionDestroy",
-             "DoneSettingTargets", "DoneTransactionPrepare",
+             "DoneTransactionInit",
+             "DoneTransactionDestroy",
+             "DoneSettingTargets",
+             "DoneTransactionPrepare",
              "DoneTransactionCommit",
              # session info
-             "StartInitSession", "DoneInitSession", "DoneApplyConfig",
+             "StartInitSession",
+             "DoneInitSession",
+             "DoneApplyConfig",
              # options
-             "DoneReadingConfigFile", "DoneSavingConfigFile",
+             "DoneReadingConfigFile",
+             "DoneSavingConfigFile",
              # progress handling
-             "ProgressDownload", "ProgressDownloadTotal", "ProgressInstall",
-             "ProgressRemove", "ProgressUpgrade", "ProgressConflict",
+             "ProgressDownload",
+             "ProgressDownloadTotal",
+             "ProgressInstall",
+             "ProgressRemove",
+             "ProgressUpgrade",
+             "ProgressConflict",
              # building
-             "DoneBuildDirectoryCleanup", "StartABSBuildPrepare",
-             "StartAURBuildPrepare", "DoneBuildPrepare", "StartBuild",
-             "DoneBuild", "StartBuildEdit", "DoneBuildEdit",
+             "DoneBuildDirectoryCleanup",
+             "StartABSBuildPrepare",
+             "StartAURBuildPrepare",
+             "DoneBuildPrepare",
+             "StartBuild",
+             "DoneBuild",
+             "StartBuildEdit",
+             "DoneBuildEdit",
 
              # log
              "Log"

@@ -108,5 +108,16 @@ class CriticalError(Exception):
     def __init__(self, msg):
         super(CriticalError, self).__init__(msg)
 
+    def format(self, *v, **kw):
+        """Implement our own :meth:`self.format` so we can easily propagade
+        errors from bottom to top and alter their content on their way up
+
+        :param v: the positional arguments to pass as format arguments
+        :param kw: the keyword arguments to pass as format arguments
+        """
+        self.args = tuple(
+            arg.format(*v, **kw) for arg in self.args if isinstance(arg, str)
+        )
+
 class UserError(BaseException):
     pass

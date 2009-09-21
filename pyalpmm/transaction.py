@@ -26,9 +26,9 @@ import pyalpmm_raw as p
 
 from pyalpmm.database import *
 from pyalpmm.tools import AskUser, CriticalError, UserError
-from pyalpmm.lists import MissList, StringList, DependencyList, \
-     FileConflictList
+from pyalpmm.lists import MissList, StringList, DependencyList, FileConflictList
 from pyalpmm.item import PackageItem
+from pyalpmm.pbuilder import PackageBuilder, BuildError
 from pyalpmm import Events
 
 class TransactionError(CriticalError):
@@ -57,14 +57,12 @@ class TransactionError(CriticalError):
 
 
 class Transaction(object):
-    """
-    The baseclass for all *Transaction classes.
+    """The baseclass for all *Transaction classes.
     Forwards alot of events to the pyalpmm event handler and manages - means
     initializes, prepares, adds targets to and commits *Transaction instances.
 
-    __init__ takes two arguments:
-    - session: instance of Session
-    - targets: a list of strings identifying the packages to process
+    :param session: instance of :class:`pyalpmm.session.Session`
+    :param targets: a list of strings identifying the packages to process
     """
     def __init__(self, session, targets = None):
         self.session = session
@@ -73,8 +71,7 @@ class Transaction(object):
         self.__backend_data = None
 
     def aquire(self):
-        """
-        Aquire a transaction from libalpm by setting all necassary callback
+        """Aquire a transaction from libalpm by setting all necassary callback
         functions and values, then call alpm_trans_init() and pray
         """
         if self.session.config.rights != "root":
@@ -109,8 +106,7 @@ class Transaction(object):
             self.prepare()
 
     def prepare(self):
-        """
-        After setting the targets, the transaction is ready to be prepared.
+        """After setting the targets, the transaction is ready to be prepared.
         Use helper functions in C (pyalpmm_raw/helper.i) to construct a
         alpm_list_t in C space on which the transaction can work on.
         """
@@ -236,22 +232,21 @@ class Transaction(object):
         # need some check WHY targets could not be added! (fileconflicts...)
         if len(out) > 0:
             raise TransactionError(
-                "Not all targets could be added, the remaining are: %s" % \
-                ", ".join(out))
+                "Not all targets could be added, the remaining are: {0}".\
+                format(", ".join(out))
+            )
 
         self.targets = (toinstall, grps_toinstall)
         self.events.DoneSettingTargets(targets=self.targets)
 
     def get_targets(self):
-        """
-        Get targets included in this transaction as a PackageList, this is
-        populated after aquire() was called.
+        """Get targets included in this transaction as a PackageList,
+        this is populated after .aquire() was called.
         """
         return PackageList(p.alpm_trans_get_pkgs())
 
     def commit(self):
-        """
-        Commit this transaction and let libalpm apply the changes to the
+        """Commit this transaction and let libalpm apply the changes to the
         filesystem and the databases
         """
         if len(self.get_targets()) == 0:
@@ -263,9 +258,10 @@ class Transaction(object):
         self.events.DoneTransactionCommit()
 
     def handle_error(self, errno):
-        """Hardcoding err numbers is evil, still error handling is a big task"""
-
-
+        """
+        Handle specific error types, if errno is unknown - show errno and
+        alpm_strerror
+        """
         if errno == p.PM_ERR_UNSATISFIED_DEPS:
             ml = MissList(p.get_list_from_ptr(self.__backend_data))
             raise TransactionError("ALPM error: %s (%s)" % (
@@ -296,19 +292,59 @@ class RemoveTransaction(Transaction):
         self.grp_search_list = self.session.db_man["local"].get_groups()
 
 class UpgradeTransaction(Transaction):
-    """Upgrade the given targets on the system"""
+    """Upgrade the given targets on the system and update local AUR database,
+    if the upgraded package is in AUR
+    """
     trans_type = p.PM_TRANS_TYPE_UPGRADE
 
-class RemoveUpgradeTransaction(Transaction):
+    #def commit(self):
+    #    """After the commit we want to check the upgraded packages, if some are
+    #    from AUR, add those to the aur installed pkgs database
+    #    """
+    #    pkgs = self.get_targets()
+    #    ret = super(UpgradeTransaction, self).commit()
+
+        #if self.session.config.aur_support:
+        #    for pkg in pkgs:
+        #        if pkg.name in self.session.db_man["aur"]:
+        #            self.session.db_man["aur"].add_pkg_to_local_db(pkg)
+    #    return ret
+
+class AURTransaction(UpgradeTransaction):
+    """The AURTransaction handles all the building, installing of a AUR package
     """
-    Didn't get behind this one though, maybe to "securely" remove and directly
+    def add_target(self, pkgname):
+        pkg = self.session.db_man.get_sync_package(pkgname)
+        if pkg is None:
+            raise DatabaseError(
+                "I haven't found a file with the pkgname: {0} inside the AUR".\
+                format(pkgname)
+            )
+
+        p = PackageBuilder(self.session, pkg)
+
+        if self.session.config.build_edit:
+            p.edit()
+
+        if not self.session.config.build_no_cleanup:
+            p.cleanup()
+
+        if not self.session.config.build_no_prepare:
+            p.prepare()
+
+        p.build()
+
+        if self.session.config.build_install:
+            super(AURTransaction, self).add_target(p.pkgfile_path)
+
+class RemoveUpgradeTransaction(Transaction):
+    """Didn't get behind this one though, maybe to "securely" remove and directly
     upgrade another package without the risk?! dunno
     """
     trans_type = p.PM_TRANS_TYPE_REMOVEUPGRADE
 
 class SysUpgradeTransaction(SyncTransaction):
-    """
-    The SysUpgradeTransaction upgrades the whole system with the latest
+    """The SysUpgradeTransaction upgrades the whole system with the latest
     available packages.
     """
     def __init__(self, session):
@@ -321,7 +357,7 @@ class SysUpgradeTransaction(SyncTransaction):
 
     def prepare(self):
         """
-        For preperation there is a special C function, which we use to
+        For preparation there is a special C function, which we use to
         get the needed targets into the transaction
         """
         if p.alpm_trans_sysupgrade(self.session.config.allow_downgrade) == -1:
@@ -346,11 +382,10 @@ class DatabaseUpdateTransaction(SyncTransaction):
         dbs, sess = self.target_dbs, self.session
         if not dbs:
             o = sess.db_man.update_dbs(force=self.session.config.force)
-        elif issubclass(dbs.__class__, list) and \
-             all(isinstance(x, str) for x in dbs):
-            o = sess.db_man.update_dbs(dbs=dbs, force=sess.config.force)
+        elif isinstance(dbs, list) and all(isinstance(x, str) for x in dbs):
+            o = sess.db_man.update_dbs(repos=dbs, force=sess.config.force)
         elif isinstance(dbs, str):
-            o = sess.db_man.update_dbs(dbs=[dbs], force=sess.config.force)
+            o = sess.db_man.update_dbs(repos=[dbs], force=sess.config.force)
         else:
             raise TypeError(("The passed databases must be either a list of "
                              "strings or only one string, not: %s") % dbs)

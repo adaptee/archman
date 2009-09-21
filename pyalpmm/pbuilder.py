@@ -14,6 +14,8 @@ import shutil
 import tarfile
 import urllib
 from StringIO import StringIO
+from subprocess import Popen, PIPE, STDOUT
+from time import sleep
 
 from item import PackageItem, AURPackageItem
 from events import Events
@@ -25,6 +27,7 @@ class BuildError(CriticalError):
 class PackageBuilder(object):
     """Manages the building process"""
     def __init__(self, session, pkg_obj):
+        print pkg_obj
         self.session = session
         self.events = session.config.events
         self.pkg = pkg_obj
@@ -36,16 +39,14 @@ class PackageBuilder(object):
         self.pkgfile_path = None
 
     def cleanup(self):
-        """
-        delete (without complaining if not found) the complete target package
+        """Delete (without complaining if not found) the complete target package
         build directory and all its subdirectories
         """
         shutil.rmtree(self.path, True)
         self.events.DoneBuildDirectoryCleanup()
 
     def prepare(self):
-        """
-        Prepare means:
+        """Prepare means:
             - decide if we have a AUR or ABS package to build
             - download the required scripts to build
         """
@@ -81,8 +82,7 @@ class PackageBuilder(object):
         self.events.DoneBuildPrepare()
 
     def build(self):
-        """
-        building is done with the given uid inside a fork,
+        """Building is done with the given uid inside a fork,
         only if PKGBUILD is found and we can change into the directory.
         If successful, set self.pkgfile_path to built package
         """
@@ -98,22 +98,32 @@ class PackageBuilder(object):
         except OSError as e:
             raise BuildError("Could not change directory to: %s" % self.path)
 
-        makepkg = "makepkg %s" % ("> /dev/null 2>&1" if c.build_quiet else "")
+        makepkg = "makepkg {0}".format(
+            "> /dev/null 2>&1" if c.build_quiet else ""
+        )
+
         # if run as root, setuid to other user
         if os.getuid() == 0:
-            pid = os.fork()
             os.chown(self.path, c.build_uid, c.build_gid)
+            rpipe, wpipe = os.pipe()
+            pid = os.fork()
             if pid:
-                os.wait()
-            else:
                 os.setuid(c.build_uid)
-                if not os.system(makepkg) == 0:
-                    print "[-] The build was not successful"
+                ret = os.system(makepkg)
+                if ret != 0:
+                    raise BuildError("makepkg threw an error: {0}".format(ret))
+                os.write(wpipe, str(ret))
+                sleep(2)
                 sys.exit()
+            else:
+                ret = int(os.read(rpipe, 1))
+                if ret != 0:
+                    raise BuildError("The build failed with the makepkg"
+                                     "returncode: {0}".format(ret))
         else:
             if not os.system(makepkg) == 0:
                 raise BuildError("The build was not successful, "
-                                 "could not change user-uid")
+                                 "could not change user-uid - you are not root")
 
         self.events.DoneBuild()
 

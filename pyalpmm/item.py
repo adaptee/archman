@@ -158,10 +158,17 @@ class AURPackageItem(AbstractItem):
 class GroupItem(AbstractItem):
     """Keeps all the information about a group, especially their '.pkgs'"""
     attributes = ["name","pkgs"]
+    #non_pacman_attributes = ["repo"]
     ctype = "pmgrp_t"
     extract = p.helper_list_getgrp
     cdesc = "grp"
     local_key_map = { "pkgs" : List.PackageList }
+
+    #def __eq__(self, other):
+    #result = super(GroupItem, self).__eq__(other)
+    #    if other.repo == self.repo and result:
+    #        return True
+    #    return False
 
     def __iter__(self):
         for m in self.pkgs:

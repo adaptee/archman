@@ -59,84 +59,146 @@ class DatabaseManager(object):
         if isinstance(tree, slice):
             raise NotImplementedError("Deleting a slice-index - alright?!")
         elif not tree in self.dbs:
-            raise KeyError("'%s' is not a known db-tree name" % tree)
+            raise KeyError("{0} is not a known db-tree name".format(tree))
         del self.dbs[tree]
 
+    def _get_repositories(self, iterable):
+        """Return the appropriate database instance for each string in
+        `iterable`
+
+        :param iterable: a set/tuple/list of strings, which all name a database
+        """
+        if not isinstance(iterable, (tuple, set, list)):
+            raise DatabaseError(
+                "You have to pass a tuple, set, list or an ancestor of them \
+                as the `repos` keyword argument, \
+                you passed a {0}".format(type(iterable))
+            )
+
+        dbs = []
+        for dbname in iterable:
+            if dbname not in self.dbs:
+                raise DatabaseError(
+                    "A database called: '{0}' was not found".format(dbname)
+                )
+            dbs.append(self[dbname])
+        return dbs
+
+    def _handle_result(self, result, raise_ambiguous):
+        """Handle/PostProcess database result
+
+        :param result: the result(set/list) from the database query
+        :param raise_ambiguous: silently give first hit if set to True if not
+                                raise :class:`DatabaseError`
+        """
+        if (len(result) == 1) or (raise_ambiguous is False and len(result) > 1):
+            return result.pop()
+        elif len(result) == 0:
+            return None
+
+        raise DatabaseError(
+            "Found multiple hits with the same query: '{0}'.\
+            Be sure to set the `raise_ambiguous` keyword to `False`, \
+            if you don't want to see this exception occur"
+        )
+
     def register(self, tree, db):
-        """Register a new database to the libalpm backend"""
-        if issubclass(db.__class__, AbstractDatabase):
+        """Register a new database to the libalpm backend
+
+        :param tree: the name of the database
+        :param db: the :class:`AbstractDatabase` ancestor instance
+        """
+        if tree in self.dbs:
+            raise DatabaseError(
+                "You cannot register a database twice: {0}".format(tree)
+            )
+
+        if isinstance(db, AbstractDatabase):
             db.tree = tree
-            self[tree] = db
-            if tree == "local":
-                self.local_dbs = {"local": db}
-            else:
-                self.sync_dbs = dict((k,x) for k,x in self.dbs.items() \
-                                     if issubclass(x.__class__, SyncDatabase))
+            db_shelf = self.local_dbs if tree == "local" else self.sync_dbs
+            self[tree] = db_shelf[tree] = db
         else:
-            raise DatabaseError(("Second parameter in register() must be an "
-                                 "AbstractDatabase successor, but is: %s" % db))
+            raise DatabaseError("Second parameter in register() must be an \
+                                AbstractDatabase ancestor, but is: {0}".\
+                                format(db))
 
-    def update_dbs(self, dbs=None, force=None, collect_exceptions=True):
-        """
-        Update all DBs or those listed in dbs. If 'force' is set,
+    def update_dbs(self, repos=None, force=None, collect_exceptions=True):
+        """Update all DBs or those listed in dbs. If 'force' is set,
         then all DBs will be updated. If 'collect_expressions' is set to
-        False, then a un-successful database update will raise a DatabaseError
+        False, then a un-successful database update will raise a
+        :class:`DatabaseError`
+
+        :param repos: the repos to update
+        :param force: force updating the repositories
+        :param collect_exceptions: if True the occuring exceptions will not be
+                                   raised, they will be showed at the end of the
+                                   transaction
         """
-        iterlist = dbs or self.sync_dbs.keys()
-        force = force is not None
+        repos = self._get_repositories(repos or self.sync_dbs.keys())
+        force = force and 1 or 0
         out, exceptions = [], []
-
-        for tree in iterlist:
-            if isinstance(self.dbs[tree], SyncDatabase):
-                try:
-                    ret = self.dbs[tree].update(force)
-                except DatabaseError as e:
-                    if collect_exceptions:
-                        exceptions.append(e)
-                    else:
-                        raise e
-
+        for repo in repos:
+            try:
+                ret = repo.update(force)
+            except DatabaseError as e:
+                if not collect_exceptions:
+                    raise e
+                # if collect_exceptions is True, just save exception
+                exceptions.append(e)
+                self.events.DatabaseUpdateError(repo=repo.tree)
+            else:
                 if ret:
-                    self.events.DatabaseUpdated(repo=tree)
+                    self.events.DatabaseUpdated(repo=repo.tree)
                 else:
-                    self.events.DatabaseUpToDate(repo=tree)
+                    self.events.DatabaseUpToDate(repo=repo.tree)
 
         if len(exceptions) > 0:
             print "[-] the following exceptions occured, while updating"
             for ex in exceptions:
-                print "[e] %s" % ex
+                print "[e] {0}".format(ex)
 
 
-    def search_package(self, repo=None, **kwargs):
-        """
-        Search for a package (in the given repos) with given properties
+    def search_package(self, repos=None, **kw):
+        """Search for a package (in the given repos) with given properties
         i.e. pass name="xterm"
-        """
-        used_dbs = self.dbs.values() if not repo else \
-                   (repo if isinstance(repo, (tuple, list, set)) else [repo])
 
-        for db in used_dbs:
-            pkglist = self[db].search_package(**kwargs)
+        :param repos: the list of repository-names to search in
+        :param kw: the searchquery
+        """
+        repos = self._get_repositories(repos or self.dbs.keys())
+        for repo in repos:
+            pkglist = repo.search_package(**kw)
             if pkglist is None:
                 continue
             for pkg in pkglist:
-                pkg.repo = db
+                pkg.repo = repo.tree
                 yield pkg
 
-    def search_local_package(self, **kwargs):
-        """A shortcut to search all local packages for the given query"""
-        return self.search_package(repo=self.local_dbs.keys(), **kwargs)
+    def search_local_package(self, **kw):
+        """A shortcut to search all local packages for the given query
 
-    def search_sync_package(self, **kwargs):
-        """A shortcut to search the sync repositories for the given query"""
-        return self.search_package(repo=self.sync_dbs.keys(), **kwargs)
+        :param kw: the search query
+        """
+        return self.search_package(repos=self.local_dbs.keys(), **kw)
 
-    def get_packages(self, dbs=None):
-        """Get all packages from all databases, actually returns an iterator"""
-        for db in dbs or self.dbs.keys():
-            pkglist = self[db].get_packages()
+    def search_sync_package(self, **kw):
+        """A shortcut to search the sync repositories for the given query
+
+        :param kw: the search query
+        """
+        return self.search_package(repos=self.sync_dbs.keys(), **kw)
+
+    def get_packages(self, repos=None):
+        """Get all packages from all databases, actually returns an iterator
+
+        :param repos: a list of the repositories, which will be used for this
+                      operation
+        """
+        repos = self._get_repositories(repos or self.dbs.keys())
+        for repo in repos:
+            pkglist = repo.get_packages()
             for pkg in pkglist:
-                pkg.repo = db
+                pkg.repo = repo.tree
                 yield pkg
 
     def get_local_packages(self):
@@ -147,71 +209,131 @@ class DatabaseManager(object):
         """Returns an iterator over all sync repository packages - shortcut"""
         return self.get_packages(self.sync_dbs.keys())
 
-    def get_groups(self, dbs=None):
-        """Get all groups from all databases"""
-        return chain(*[self[p].get_groups() for p in dbs or self.dbs.keys()])
+    def get_groups(self, repos=None):
+        """Get all groups from all databases
+
+        :param repos: a list of the repositiory names, which should be used
+        """
+        repos = self._get_repositories(repos or self.dbs.keys())
+        return chain(*[repo.get_groups() for repo in repos])
 
     def get_local_groups(self):
         """Get only locally available groups - shortcut"""
-        return self.get_groups(self.local_dbs.keys())
+        return self.get_groups(repos=self.local_dbs.keys())
 
     def get_sync_groups(self):
         """Get all sync-able groups"""
-        return self.get_groups(self.sync_dbs.keys())
+        return self.get_groups(repos=self.sync_dbs.keys())
 
-    # this maybe private and with repo as mandatory argument
-    def get_package(self, pkgname, repos):
-        """Return package either for sync or for local repo"""
-        repo = None
+    def get_package(self, pkgname, repos=None, raise_ambiguous=False):
+        """Return package either for sync or for local repo
+
+        You can either give the package name in the full repo notation,
+        i.e.: extra/xterm (no leading slash and no version!) or you can
+        pass just a pkgname like "xterm" and also pass a list of strings to
+        the repos keyword and only the included repositories will be
+        checked during the search!
+
+        If `repos` contains a not known repository, throw a
+        :class:`DatabaseError`
+
+        :param pkgname: the package name to look for
+        :param repos: a list of the repositiory names, which will be used to
+                      search the package name inside
+        :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
+                                there is more than one hit, if False, just
+                                return the first hit
+        """
+
+        # check for leading "/"
+        if pkgname.startswith("/"):
+            raise DatabaseError(
+                "The passed 'pkgname' started with a '/', \
+                this is not a valid package name"
+            )
+
+        # check for repository package notation
         if "/" in pkgname:
-            sp = pkgname.index("/")
-            pkgname, repo = pkgname[sp+1:], pkgname[:sp]
-            found = [x for x in self.dbs[repo].search_package(name=pkgname) \
-                     if x.name == pkgname]
-        else:
-            assert repos in ["sync", "local"]
-            method = self.search_sync_package if repos == "sync" \
-                   else self.search_local_package
+            try:
+                repo, pkgname = pkgname.split("/")
+                repos = [repo]
+            except:
+                raise DatabaseError(
+                    "The given `pkgname` was not correctly formated: '{0}'". \
+                    format(pkgname)
+                )
+        repos = self._get_repositories(repos or self.dbs.keys())
 
-            found = [x for x in method(name=pkgname) if x.name == pkgname]
+        query = {"name__eq": pkgname}
+        found = sum((repo.search_package(**query) for repo in repos), [])
 
-        if len(found) == 0:
-            raise DatabaseError("'%s' was not found" % pkgname)
-        elif len(found) > 1:
-            raise DatabaseError("'%s' is ambigous, found in repos: %s" % (
-                pkgname,
-                ", ".join(x.repo for x in found)
-            ))
-        return found[0]
+        try:
+            return self._handle_result(found, raise_ambiguous)
 
-    def get_local_package(self, pkgname):
-        """Get info about one package 'pkgname', from the local repository"""
-        return self.get_package(pkgname, repos="local")
+        except DatabaseError as e:
+            e.format("name_eq={0}".format(pkgname))
+            raise e
 
-    def get_sync_package(self, pkgname):
-        """Get info about one remote-package called 'pkgname'"""
-        return self.get_package(pkgname, repos="sync")
+    def get_local_package(self, pkgname, raise_ambiguous=False):
+        """Get info about one package `pkgname`, from the local repository
 
-    def get_group(self, pkgname, repo=None):
+        :param pkgname: the package name to look for
+        :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
+                                there is more than one hit, if False, just
+                                return the first hit
         """
-        Get one group by name
-        (optional 'repo' arg is to search only in one specific database)
+        return self.get_package(
+            pkgname,
+            repos=self.local_dbs.keys(),
+            raise_ambiguous=raise_ambiguous
+        )
+
+    def get_sync_package(self, pkgname, raise_ambiguous=False):
+        """Get info about one remote-package called `pkgname`
+
+        :param pkgname: the package name to look for
+        :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
+                                there is more than one hit, if False, just
+                                return the first hit
         """
-        src = (self.get_all_groups() if repo is None \
-            else self.dbs[repo].get_groups())
-        for gr in src:
-            if gr.name == pkgname:
-                return gr
-        return None
+        return self.get_package(
+            pkgname,
+            repos=self.sync_dbs.keys(),
+            raise_ambiguous=raise_ambiguous
+        )
+
+    def get_group(self, grpname, repos=None, raise_ambiguous=False):
+        """Get one group from the database
+        :param grpname: the name of the searched group
+        :param repos: (optional) arg is to search only in the given databases
+        """
+        repos = self._get_repositories(repos)
+
+        grps = []
+        for grp in (db.get_groups() for db in repos):
+            if grp.name == grpname:
+                grps.add(grp)
+        try:
+            return self._handle_result(grps, raise_ambiguous)
+        except DatabaseError as e:
+            e.format(grpname)
+            raise e
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""
     def __del__(self):
         p.alpm_db_unregister(self.db)
 
-    def search_package(self, **kwargs):
+    def __contains__(self, pkgname):
+        res = self.search_package(name=pkgname)
+        for pkg in res:
+            if pkg.name == pkgname:
+                return True
+        return False
+
+    def search_package(self, **kw):
         """Search this database for a given query"""
-        return self.get_packages().search(**kwargs)
+        return self.get_packages().search(**kw)
 
     def get_packages(self):
         """Get all available packages in this database"""
@@ -234,14 +356,19 @@ class SyncDatabase(AbstractDatabase):
         self.tree = tree
         if p.alpm_db_setserver(self.db, url) == -1:
             raise DatabaseError(
-                "Could not connect database: %s to server: %s" % (tree, url))
+                "Could not connect database: {0} to url/server: {1}".format(
+                    tree, url
+                ))
 
     def update(self, force=None):
-        """Call the underlying c-function to update the database"""
+        """Call the underlying c-function to update the database
+
+        :param force: the database ignores a possible no-need-to-update
+        """
         r = p.alpm_db_update(force, self.db)
         if r < 0:
             raise DatabaseError(
-                "Database '%s' could not be updated" % self.tree)
+                "Database '{0}' could not be updated".format(self.tree))
         elif r == 1:
             return False
         return True
@@ -261,11 +388,45 @@ class AURDatabase(SyncDatabase):
         # no grps in aur used (afaik?!)
         return []
 
+    #@property
+    #def local_db(self):
+    #    with file(self.config.aur_installed_pkgs) as fd:
+    #        pkglist = [x for x in fd.read().split("\n") if x]
+    #    return pkglist
+
+    #def create_local_db(self, session):
+    #    self.config.events.StartLocalAURPackageSearch()
+    #    aurpkgs = []
+    #    localpkgs = session.db_man.get_local_packages()
+    #    for local in localpkgs:
+    #        try:
+    #            if session.db_man.get_package(local.name, repos=self.config.repos):
+    #                continue
+    #        except DatabaseError:
+    #            pass
+
+    #        fullname = "aur/{0.name}".format(local)
+    #        try:
+    #            aurpkg = session.db_man.get_package(fullname)
+    #        except DatabaseError:
+    #            # packagelist has some packages which are not really in AUR
+    #            pass
+    #        else:
+    #            aurpkgs.append(local)
+
+    #    with file(self.config.aur_installed_pkgs, "w") as fd:
+    #        fd.writelines(["{0.name}-{0.version}".format(p) for p in aurpkgs])
+    #    self.config.events.DoneLocalAURPackageSearch(pkgs=aurpkgs)
+    #    return aurpkgs
+
+    #def update_local_db(self, pkg):
+    #    if pkg.name in self.local_db:
+    #        return None
+
+    #    with file(self.config.aur_installed_pkgs, "a") as fd:
+    #        fd.write("{0.name}-{0.version}\n".format(pkg))
+    #    self.config.events.DoneAddingAURPackageToInstalledDB(pkg=pkg)
+
     def update(self, force=None):
-        """Update the AUR database cache"""
-        # we cannot decide wheather we have a fresh or old aur-db-cache,
-        # so if an update is triggered, just asume we need a new one
-        return AURPackageList.refresh_db_cache(
-            self.config.aur_db_path,
-            self.config.aur_url + self.config.aur_pkg_dir
-        )
+        """There is no need to update because we always issue an RPC request"""
+        return True
