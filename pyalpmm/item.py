@@ -84,13 +84,11 @@ class AbstractItem(object):
         return self.get_info(key)
 
     def get_info(self, key):
-        """
-        Called from __getattr__ to ask for item-data. This method gets the
+        """Called from __getattr__ to ask for item-data. This method gets the
         data directly from the backend and maps it to a python object according
         to local_map by key or respectivly GLOBAL_MAP by type. Additionally it
         will return the data from one of the non_pacman_attributes.
         """
-
         # catch non c-lib/pacman attributes
         if key in self.non_pacman_attributes:
             craw = object.__getattribute__(self, key)

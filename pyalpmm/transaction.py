@@ -29,7 +29,6 @@ from pyalpmm.tools import AskUser, CriticalError, UserError
 from pyalpmm.lists import MissList, StringList, DependencyList, FileConflictList
 from pyalpmm.item import PackageItem
 from pyalpmm.pbuilder import PackageBuilder, BuildError
-from pyalpmm import Events
 
 class TransactionError(CriticalError):
     """
@@ -258,8 +257,7 @@ class Transaction(object):
         self.events.DoneTransactionCommit()
 
     def handle_error(self, errno):
-        """
-        Handle specific error types, if errno is unknown - show errno and
+        """Handle specific error types, if errno is unknown - show errno and
         alpm_strerror
         """
         if errno == p.PM_ERR_UNSATISFIED_DEPS:
@@ -375,8 +373,7 @@ class DatabaseUpdateTransaction(SyncTransaction):
         pass
 
     def commit(self):
-        """
-        The actual work is given to the *Database instances, they have to
+        """The actual work is given to the *Database instances, they have to
         implement the updating by thereselves.
         """
         dbs, sess = self.target_dbs, self.session

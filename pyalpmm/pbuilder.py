@@ -25,9 +25,12 @@ class BuildError(CriticalError):
     pass
 
 class PackageBuilder(object):
-    """Manages the building process"""
+    """Manages the building process
+
+    :param session: a :class:`pyalpmm.Session` instance
+    :param pkg_obj: the :class:`PackageItem` to build
+    """
     def __init__(self, session, pkg_obj):
-        print pkg_obj
         self.session = session
         self.events = session.config.events
         self.pkg = pkg_obj
@@ -47,8 +50,9 @@ class PackageBuilder(object):
 
     def prepare(self):
         """Prepare means:
-            - decide if we have a AUR or ABS package to build
-            - download the required scripts to build
+
+        * decide if we have a AUR or ABS package to build
+        * download the required scripts to build
         """
 
         c = self.session.config
@@ -76,8 +80,8 @@ class PackageBuilder(object):
             to.close()
         else:
             raise BuildError(("The passed pkg was not an instance of "
-                              "(AUR)PackageItem, more a '%s'") \
-                              % type(pkg_obj).__name__)
+                              "(AUR)PackageItem, more a '{0}'").format(
+                              type(pkg_obj).__name__))
 
         self.events.DoneBuildPrepare()
 
@@ -91,12 +95,13 @@ class PackageBuilder(object):
         c = self.session.config
 
         if not os.path.exists(os.path.join(self.path, "PKGBUILD")):
-            raise BuildError("PKGBUILD not found at %s" % self.path)
+            raise BuildError("PKGBUILD not found at {0}".format(self.path))
 
         try:
             os.chdir(self.path)
         except OSError as e:
-            raise BuildError("Could not change directory to: %s" % self.path)
+            raise BuildError("Could not change directory to: {0}".\
+                             format(self.path))
 
         makepkg = "makepkg {0}".format(
             "> /dev/null 2>&1" if c.build_quiet else ""

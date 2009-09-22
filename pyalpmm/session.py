@@ -17,7 +17,9 @@ import pyalpmm_raw as p
 
 from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
 from tools import CriticalError
-
+from transaction  import DatabaseUpdateTransaction, AURTransaction, \
+     UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
+     SyncTransaction
 
 class SessionError(CriticalError):
     pass
@@ -81,13 +83,94 @@ class Session(object):
         self.config.events.DoneApplyConfig()
 
 
+class SystemError(CriticalError):
+    pass
+
 class System(object):
     """The highest-level API from pyalpmm, changing the system entirely
     with just some lines of code
     """
-    pass
+    def __init__(self, session):
+        self.session = session
+        self.config = session.config
+        self.events = session.config.events
 
-    # alpm_list_t *deps = alpm_deptest(alpm_option_get_localdb(), targets);
+    def _is_root(self, critical=True):
+        if self.session.config.rights == "root":
+            return True
+        if critical:
+            raise SystemError("You must be root make these changes!")
+        return False
 
+    def _handle_transaction(self, tcls, **kw):
+        self._is_root()
+        tobj = tcls(self.session, **kw)
+        with tobj:
+            tobj.aquire()
+            self.events.ProcessingPackages(pkgs=[p for p in tobj.get_targets()])
+            tobj.commit()
+
+    def _is_package_installed(self, pkgname):
+        loc_pkg = self.session.db_man.get_local_package(pkgname)
+        syn_pkg = self.session.db_man.get_local_package(pkgname)
+        if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
+            return loc_pkg
+        return False
+
+    def remove_packages(self, targets):
+        """pacman -R <targets>"""
+        self._handle_transaction(RemoveTransaction, targets=targets)
+
+    def upgrade_packages(self, targets):
+        """pacman -U <targets>"""
+        for item in targets:
+            pkg = self._is_package_installed(item)
+            if pkg is not None:
+                self.events.ReInstallingPackage(pkg=pkg)
+        self._handle_transaction(UpgradeTransaction, targets=targets)
+
+    def build_packages(self, targets):
+        """no more pacman here"""
+        self._handle_transaction(AURTransaction, targets=targets)
+
+    def sync_packages(self, targets):
+        """pacman -S <targets>"""
+        for item in targets:
+            pkg = self._is_package_installed(item)
+            if pkg is not False:
+                self.events.ReInstallingPackage(pkg=pkg)
+        self._handle_transaction(SyncTransaction, targets=targets)
+
+    def sys_upgrade(self):
+        """pacman -Syu"""
+        self._handle_transaction(SysUpgradeTransaction)
+
+    def update_databases(self):
+        """pacman -Sy/Syu"""
+        self._handle_transaction(DatabaseUpdateTransaction)
+
+    def get_local_packages(self):
+        """pacman -Q"""
+        return self.session.db_man["local"].get_packages()
+
+    def search_packages(self, pkgname):
+        """pacman -Ss"""
+        query = {"name": pkgname, "desc": pkgname}
+        return sorted(
+            self.session.db_man.search_sync_package(**query),
+            key=lambda p: (p.repo, p.name)
+        )
+
+    def get_package_files(self, pkgname):
+        """pacman -Ql || mmacman -QiF"""
+        pkg = self.session.db_man.get_local_package(pkgname)
+        if pkg:
+            return pkg.files
+
+    def owner_of_file(self, filepath):
+        """pacman -Qo"""
+        for pkg in self.get_local_packages():
+            if filepath in pkg.files:
+                return pkg
 
 

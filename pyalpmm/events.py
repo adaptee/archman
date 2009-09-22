@@ -44,15 +44,18 @@ class Events:
              "DatabaseUpToDate",                  # (repo: str)
              "DatabaseUpdated",                   # (repo: str)
              "DatabaseUpdateError",               # (repo: str)
-             "StartLocalAURPackageSearch",        # ()
-             "DoneLocalAURPackageSearch",         # (pkgs: list of PackageItem)
-             "DoneAddingAURPackageToInstalledDB", # (pkg: PackageItem)
+             #"StartLocalAURPackageSearch",        # ()
+             #"DoneLocalAURPackageSearch",         # (pkgs: list of PackageItem)
+             #"DoneAddingAURPackageToInstalledDB", # (pkg: PackageItem)
              # transaction info
              "DoneTransactionInit",
              "DoneTransactionDestroy",
              "DoneSettingTargets",
              "DoneTransactionPrepare",
              "DoneTransactionCommit",
+             # System info
+             "ProcessingPackages",                # (pkgs: list of PackageItem)
+             "ReInstallingPackage",               # (pkg: PackageItem)
              # session info
              "StartInitSession",
              "DoneInitSession",
