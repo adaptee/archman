@@ -144,8 +144,7 @@ def exceptionhooker(exception_type, exception_value, traceback_obj):
     print "[e] A {0} occured:".format(exception_type.__name__)
     print "[e] {0}".format(exception_value)
 
-#sys.excepthook = exceptionhooker
-
+sys.excepthook = exceptionhooker
 
 if options.force or options.nodeps or options.download_only:
     print "[i] You have set the following commandline options:"
