@@ -10,12 +10,74 @@ to fancy-fy some of the output made by mmacman/pyalpmm
 
 import time
 import sys, os
+import math
 
 import pyalpmm_raw as p
 
-class AskUser(object):
+class ProgressBar(object):
+    """This is a Quick-Shot on a ProgressBar to make `mmacman` a little
+    more charming
+
+    :param endvalue: Final Value, 100% equivalent
+    :param label: a describing label
     """
-    Ask the user on the console the 'question', which can be answered only
+    template = {
+        "left"      : "[<",
+        "mid"       : "_",
+        "right"     : ">]",
+        "perc"      : "{0:>6.1f}%",
+        "fill"      : "#"
+    }
+    bar_width = 20
+
+    def __init__(self, endvalue, label):
+        self.endvalue = endvalue
+        self.label = label
+
+    def get_bar(self, per_fin, filled):
+        """Return the :class:`ProgressBar` directly ready to write it on the
+        screen. Oh no, I mean - ah whateva.
+
+        :param per_fin: percent of this task done
+        :param filled: the number of chars filled with the "fill" char
+        """
+        label_padding = self.max_width - self.bar_width - 7
+        per_fin = 100 if per_fin > 100 else per_fin
+        filled = self.bar_width if filled > self.bar_width else filled
+        t = self.template
+        empty = int(math.floor(self.bar_width - float(filled)))
+
+        # extremly unprofessional, but that's how "guis" work
+        if per_fin == "finished":
+            per_fin, empty, filled = 100, 0, self.bar_width
+
+        return "{0:{1}}{2}{3}".format(
+            self.label,
+            label_padding-4,
+            t["left"] + t["fill"]*filled + t["mid"]*empty + t["right"],
+            t["perc"].format(per_fin)
+        )
+
+    def step_to(self, value):
+        per_finished = value / (self.endvalue/100.)
+        filled = int(math.ceil((self.bar_width/100.) * per_finished))
+
+        fd = sys.stdout
+        bar = self.get_bar(per_finished, filled)
+
+        sys.stdout.write(bar + "\r")
+        if per_finished >= 100:
+            fd.write(self.get_bar("finished", self.bar_width))
+            fd.flush()
+            fd.write("\n")
+        fd.flush()
+
+    @property
+    def max_width(self):
+        return int(os.popen('stty size', 'r').read().split()[1])
+
+class AskUser(object):
+    """Ask the user on the console the 'question', which can be answered only
     with items in 'answers' and save the inputed value in 'self.answer'
     """
     def __init__(self, question, answers=["y","n"]):
