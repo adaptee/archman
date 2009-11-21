@@ -16,7 +16,7 @@ import pyalpmm_raw as p
 
 class ProgressBar(object):
     """This is a Quick-Shot on a ProgressBar to make `mmacman` a little
-    more charming
+    more charming.
 
     :param endvalue: Final Value, 100% equivalent
     :param label: a describing label
@@ -28,70 +28,109 @@ class ProgressBar(object):
         "perc"      : "{0:>6.1f}%",
         "fill"      : "#"
     }
-    bar_width = 20
+    prefix = "[i] "
+    pad_right = 1
 
-    def __init__(self, endvalue, label):
+    def __init__(self, endvalue, label=None, length=None):
         self.endvalue = endvalue
-        self.label = label
+        self.label = label or ""
+        self.length = length
 
-    def get_bar(self, per_fin, filled):
+    def _get_bar(self, per_fin, filled):
         """Return the :class:`ProgressBar` directly ready to write it on the
-        screen. Oh no, I mean - ah whateva.
+        screen. Oh no, I mean - ah whateva. Naming of all the spacing and stuff
+        is done like that:
+
+        |---------------- window width(self.max_width) ------------------|
+        |<prefix><label><space_left><full_bar_width><perc><right_space>  |
 
         :param per_fin: percent of this task done
         :param filled: the number of chars filled with the "fill" char
         """
-        label_padding = self.max_width - self.bar_width - 7
-        per_fin = 100 if per_fin > 100 else per_fin
+        # progressbar data
+        per_fin = 100 if per_fin >= 100 or per_fin == "finished" else per_fin
         filled = self.bar_width if filled > self.bar_width else filled
-        t = self.template
-        empty = int(math.floor(self.bar_width - float(filled)))
+        empty = self.bar_width - filled
 
         # extremly unprofessional, but that's how "guis" work
         if per_fin == "finished":
             per_fin, empty, filled = 100, 0, self.bar_width
 
+        t = self.template
+        if self.length: # got a non-labeled progressbar
+            return "{0}{1}".format(
+                t["left"] + t["fill"]*filled + t["mid"]*empty + t["right"],
+                t["perc"].format(per_fin)
+            )
+
         return "{0:{1}}{2}{3}".format(
-            self.label,
-            label_padding-4,
+            self.prefix + self.label,
+            self.space_left,
             t["left"] + t["fill"]*filled + t["mid"]*empty + t["right"],
             t["perc"].format(per_fin)
         )
 
     def step_to(self, value):
+        """This is the method called from outside to feed the
+        :class:`ProgressBar` instance with new data.
+
+        :param value: the now reached value
+        """
         per_finished = value / (self.endvalue/100.)
         filled = int(math.ceil((self.bar_width/100.) * per_finished))
 
-        fd = sys.stdout
-        bar = self.get_bar(per_finished, filled)
-
-        sys.stdout.write(bar + "\r")
         if per_finished >= 100:
-            fd.write(self.get_bar("finished", self.bar_width))
-            fd.flush()
-            fd.write("\n")
-        fd.flush()
+            return self._get_bar("finished", self.bar_width)
+        else:
+            return self._get_bar(per_finished, filled)
 
     @property
     def max_width(self):
+        """Maximum available width in this console window"""
         return int(os.popen('stty size', 'r').read().split()[1])
 
+    @property
+    def bar_width(self):
+        """Width of the dynamic part of the progressbar"""
+        if self.max_width < 80:
+            return 30
+        return int((self.max_width - 45) * 0.8)
+
+    @property
+    def full_bar_width(self):
+        """Full width of the progressbar including frame-chars"""
+        return self.bar_width + \
+               len(self.template["left"]) + \
+               len(self.template["right"])
+
+    @property
+    def space_left(self):
+        """This is the spacing used left of the whole bar"""
+        return self.max_width - self.full_bar_width - \
+               self.pad_right - len(self.template["perc"].format(100))
+
 class AskUser(object):
-    """Ask the user on the console the 'question', which can be answered only
-    with items in 'answers' and save the inputed value in 'self.answer'
+    """Ask the user on the console - can be answered only with the given
+    possibilities - save the valid, entered value in :attr:`self.answer`
+
+    :param question: the question the user should be asked
+    :param ansers: a list of possible answers (case-insensitive)
     """
     def __init__(self, question, answers=["y","n"]):
         ans = ""
         while not ans.lower() in answers:
-            print
-            ans = raw_input("%s " % question)
+            sys.stdout.write(question)
+            sys.stdout.flush()
+            self.answer = ans = raw_input().lower()
+            sys.stdout.write("\r")
+            sys.stdout.flush()
 
-        self.answer = ans
 
 class FancyOutput(object):
-    """
-    A baseclass for a container to easily output data in a friendly readable
+    """A baseclass for a container to easily output data in a friendly readable
     formatting, but also keep the original data for later use.
+
+    :param data: the raw data to fancyfy
     """
     def __init__(self, data):
         self.raw = data
@@ -100,13 +139,12 @@ class FancyOutput(object):
     def __len__(self):
         return len(self.out)
 
-    __unicode__ = __repr__ = __str__ = lambda s: s.out
-
+    __unicode__ = __repr__ = __str__ = lambda s: str(s.out)
 
 class FancySize(FancyOutput):
     """Nicely format filesizes in B, kB, MB and GB suffixes"""
     def __init__(self, bytes):
-        self.raw = b = long(bytes)
+        self.raw = b = self.out = long(bytes)
         suffixes = ["B","kB", "MB", "GB"]
         for i in xrange(len(suffixes)-1, -1, -1):
             if b > 1024**i:
@@ -133,8 +171,7 @@ class FancyDateTime(FancyOutput):
             self.out = time.asctime(self.tup)
 
 class FancyReason(FancyOutput):
-    """
-    Human readable representation of the reason why a package was installed
+    """Human readable representation of the reason why a package was installed
     """
     def __init__(self, data):
         self.raw = data
@@ -143,8 +180,7 @@ class FancyReason(FancyOutput):
              p.PM_PKG_REASON_DEPEND: "installed as a dependency"}[data]
 
 class FancyPackage(FancyOutput):
-    """
-    Show all available PackageItem attributes (means: those with a None value
+    """Show all available PackageItem attributes (means: those with a None value
     won't be showed) in a more or less fancy table-like layout.
     """
     def __init__(self, pkg):
@@ -163,8 +199,6 @@ class FancyPackage(FancyOutput):
         o += "###>"
         self.raw = pkg
         self.out = o
-
-
 
 class CriticalError(Exception):
     def __init__(self, msg):

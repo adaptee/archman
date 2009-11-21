@@ -88,12 +88,34 @@ class SystemError(CriticalError):
 
 class System(object):
     """The highest-level API from pyalpmm, changing the system entirely
-    with just some lines of code
+    with just some lines of code.
+
+    :param session: the :class:`Session` instance
+    :param global_exc_cb: callback func for global exception catcher
+    :param global_sig_cb: callback func to handle signals
     """
-    def __init__(self, session):
+    catch_signals = ["SIGINT", "SIGTERM"]
+
+    def __init__(self, session, global_exc_cb=False, global_sig_cb=False):
         self.session = session
         self.config = session.config
         self.events = session.config.events
+        self.global_exc_cb = global_exc_cb
+        self.global_sig_cb = global_sig_cb
+
+        # if wanted init global exception catching with callback func
+        if global_exc_cb:
+            if not callable(global_exc_cb):
+                raise SystemError(
+                    "The 'global_exc_catch' you passed is not callable")
+            self._init_global_exception_handler(global_exc_cb)
+
+        # if wanted init global signal catching with callback func
+        if global_sig_cb:
+            if not callable(global_sig_cb):
+                raise SystemError(
+                    "The 'global_sig_cb' you passed is not callable")
+            self._init_signal_handler(global_sig_cb)
 
     def _is_root(self, critical=True):
         if self.session.config.rights == "root":
@@ -117,12 +139,33 @@ class System(object):
             return loc_pkg
         return False
 
+    def _init_global_exception_handler(self, callback):
+        def exceptionhooker(exception_type, exception_value, traceback_obj):
+            callback(exception_type, exception_value, traceback_obj)
+        sys.excepthook = exceptionhooker
+
+    def _init_signal_handler(self, callback):
+        import signal as sig
+        from signal import signal as connect
+        for target_signal in self.catch_signals:
+            connect(
+                getattr(sig, target_signal),
+                callback
+            )
+
     def remove_packages(self, targets):
-        """pacman -R <targets>"""
+        """Remove the given targets from the system. (``pacman -R <target>``)
+
+        :param targets: pkgnames as a list of str
+        """
         self._handle_transaction(RemoveTransaction, targets=targets)
 
     def upgrade_packages(self, targets):
-        """pacman -U <targets>"""
+        """Upgrade the given targets from remote repositories if available.
+        (``pacman -U <targets>``)
+
+        :param targets: pkgfilenames as a list of str
+        """
         for item in targets:
             pkg = self._is_package_installed(item)
             if pkg is not None:
@@ -130,11 +173,16 @@ class System(object):
         self._handle_transaction(UpgradeTransaction, targets=targets)
 
     def build_packages(self, targets):
-        """no more pacman here"""
+        """Build the given targets either from AUR or through ABS.
+
+        :param targets: pkgnames as a list of str"""
         self._handle_transaction(AURTransaction, targets=targets)
 
     def sync_packages(self, targets):
-        """pacman -S <targets>"""
+        """Syncronize local and remote version of the given targets.
+
+        :param targets: pkgnames as a list of str
+        """
         for item in targets:
             pkg = self._is_package_installed(item)
             if pkg is not False:
@@ -142,19 +190,22 @@ class System(object):
         self._handle_transaction(SyncTransaction, targets=targets)
 
     def sys_upgrade(self):
-        """pacman -Syu"""
+        """Upgrade the whole system with the latest available packageversions"""
         self._handle_transaction(SysUpgradeTransaction)
 
     def update_databases(self):
-        """pacman -Sy/Syu"""
+        """Update the package database indexes"""
         self._handle_transaction(DatabaseUpdateTransaction)
 
     def get_local_packages(self):
-        """pacman -Q"""
+        """Get all local installed packages"""
         return self.session.db_man["local"].get_packages()
 
     def search_packages(self, pkgname):
-        """pacman -Ss"""
+        """Search for a query/pkgname in the repositories. Behave like
+        pacman and also search inside the package descriptions.
+
+        :param pkgname: the query which should be searched for"""
         query = {"name": pkgname, "desc": pkgname}
         return sorted(
             self.session.db_man.search_sync_package(**query),
@@ -162,15 +213,20 @@ class System(object):
         )
 
     def get_package_files(self, pkgname):
-        """pacman -Ql || mmacman -QiF"""
+        """Return a full list of all files inside a local package.
+
+        :param pkgname: the package to inspect"""
         pkg = self.session.db_man.get_local_package(pkgname)
         if pkg:
             return pkg.files
 
     def owner_of_file(self, filepath):
-        """pacman -Qo"""
+        """Determine which package installed and thus owns the given filepath
+
+        :param filepath: the full and absolut path of the loner
+        """
         for pkg in self.get_local_packages():
-            if filepath in pkg.files:
+            if pkg.files and filepath in pkg.files:
                 return pkg
 
 

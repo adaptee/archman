@@ -20,10 +20,9 @@ from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType
 
 
 class AbstractItem(object):
-    """
-    The baseclass for all *Item classes. Transalates Python attribute access on
-    this object to the appropriate C function call. Also handles the mapping of
-    the C types to Python types and vice versa.
+    """The baseclass for all *Item classes. Transalates Python attribute access
+    on this object to the appropriate C function call. Also handles the mapping
+    of the C types to Python types and vice versa.
 
     Each derived class may set one or more of the following class attributes to
     control the behaviour of the "translator".
@@ -47,8 +46,7 @@ class AbstractItem(object):
     attributes, ctype, extract, cdesc = None, None, None, None
     local_key_map, non_pacman_attributes = {}, []
     def __init__(self, raw_data):
-        """
-        Extracts the data with 'self.extract()' from the container/list
+        """Extracts the data with 'self.extract()' from the container/list
         'raw_data' in case we got a list instead of a specific wanted type
         defined by 'self.ctype'
         """
@@ -112,8 +110,7 @@ class AbstractItem(object):
 
 
 class PackageItem(AbstractItem):
-    """
-    The most widly used *Item in pyalpmm, it holds all information available
+    """The most widly used *Item in pyalpmm, it holds all information available
     for one specific package. Not all attributes are always accessable,
     for example you can only see the containing files from a local package,
     never from a sync package.
@@ -135,8 +132,7 @@ class PackageItem(AbstractItem):
                      "installdate" : FancyDateTime, "size" : FancySize}
 
 class AURPackageItem(AbstractItem):
-    """
-    This is still a little messy here. But at this point I doubt I have no
+    """This is still a little messy here. But at this point I doubt I have no
     better/greater/eviler idea, so this is a class describing and wrapping one
     entry from the AUR.
     """
@@ -162,12 +158,6 @@ class GroupItem(AbstractItem):
     cdesc = "grp"
     local_key_map = { "pkgs" : List.PackageList }
 
-    #def __eq__(self, other):
-    #result = super(GroupItem, self).__eq__(other)
-    #    if other.repo == self.repo and result:
-    #        return True
-    #    return False
-
     def __iter__(self):
         for m in self.pkgs:
             yield m
@@ -192,8 +182,7 @@ class MissItem(AbstractItem):
     local_key_map = {"dep" : DependencyItem }
 
 class FileConflictItem(AbstractItem):
-    """
-    Describes a file conflict 'file' between two packages 'target' and 'ctarget'
+    """Describes a file conflict 'file' between two packages 'target' and 'ctarget'
     with 'type' holding the type of the conflict
     """
     attributes = ["target", "type", "file", "ctarget"]

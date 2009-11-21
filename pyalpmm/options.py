@@ -29,8 +29,7 @@ class ConfigError(CriticalError):
     pass
 
 class ConfigItem(object):
-    """
-    The baseclass for all *ConfigItem instances. One ConfigItem represents
+    """The baseclass for all *ConfigItem instances. One ConfigItem represents
     one option and its value inside the ConfigMapper class.
 
     As long as used as an object attribute it behaves like a simple data type,
@@ -116,8 +115,7 @@ class CommandlineItem(ConfigItem):
         super(CommandlineItem, self).__init__(None, default_value)
 
 class ConfigMapper(object):
-    """
-    The baseclass for a ConfigMapper class.
+    """The baseclass for a ConfigMapper class.
     The idea is to define your configuration options as precise as possible
     and the let the ConfigMapper do the rest, including r/w a configfile,
     convert into the needed data types and provide the right default values,
@@ -297,9 +295,8 @@ class PyALPMMConfiguration(ConfigMapper):
 
     @property
     def transaction_flags(self):
-        """
-        Add the (mainly) commandline arguments together to get the transaction
-        flag value. TODO: add more...
+        """Add the (mainly) commandline arguments together to get the
+        transaction flag value. TODO: add more...
         """
         flagmap = {"download_only": p.PM_TRANS_FLAG_DOWNLOADONLY,
                    "force": p.PM_TRANS_FLAG_FORCE,
@@ -309,8 +306,7 @@ class PyALPMMConfiguration(ConfigMapper):
                    if key in flagmap and item.value is True )
 
     def read_from_file(self):
-        """
-        After regulary using the ConfigMapper read_from_file() we want to put
+        """After regulary using the ConfigMapper read_from_file() we want to put
         some more data into our object from the repository mirrorlist file and
         of course custom repositories from the config file, too
         """

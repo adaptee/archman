@@ -27,8 +27,7 @@ class DatabaseError(CriticalError):
     pass
 
 class DatabaseManager(object):
-    """
-    Handles the different repositories and databases. Most use-cases will
+    """Handles the different repositories and databases. Most use-cases will
     nicely fit into the methods this class provides, which are mainly to
     search/examine/compare different packages from different repositories.
     """
@@ -44,9 +43,11 @@ class DatabaseManager(object):
             try:
                 return self.dbs[tree]
             except KeyError, e:
-                raise DatabaseError("The requested db-tree '%s' is not available" % tree)
+                raise DatabaseError(
+                    "The requested db-tree '{0}' is not available".format(tree))
         else:
-            raise NotImplementedError("Only string keys are allowed as tree name")
+            raise NotImplementedError(
+                "Only string keys are allowed as tree name")
 
     def __setitem__(self, tree, item):
         if isinstance(tree, slice):
@@ -385,47 +386,7 @@ class AURDatabase(SyncDatabase):
 
     def get_groups(self):
         """There are no groups in AUR, so just returns an empty list"""
-        # no grps in aur used (afaik?!)
         return []
-
-    #@property
-    #def local_db(self):
-    #    with file(self.config.aur_installed_pkgs) as fd:
-    #        pkglist = [x for x in fd.read().split("\n") if x]
-    #    return pkglist
-
-    #def create_local_db(self, session):
-    #    self.config.events.StartLocalAURPackageSearch()
-    #    aurpkgs = []
-    #    localpkgs = session.db_man.get_local_packages()
-    #    for local in localpkgs:
-    #        try:
-    #            if session.db_man.get_package(local.name, repos=self.config.repos):
-    #                continue
-    #        except DatabaseError:
-    #            pass
-
-    #        fullname = "aur/{0.name}".format(local)
-    #        try:
-    #            aurpkg = session.db_man.get_package(fullname)
-    #        except DatabaseError:
-    #            # packagelist has some packages which are not really in AUR
-    #            pass
-    #        else:
-    #            aurpkgs.append(local)
-
-    #    with file(self.config.aur_installed_pkgs, "w") as fd:
-    #        fd.writelines(["{0.name}-{0.version}".format(p) for p in aurpkgs])
-    #    self.config.events.DoneLocalAURPackageSearch(pkgs=aurpkgs)
-    #    return aurpkgs
-
-    #def update_local_db(self, pkg):
-    #    if pkg.name in self.local_db:
-    #        return None
-
-    #    with file(self.config.aur_installed_pkgs, "a") as fd:
-    #        fd.write("{0.name}-{0.version}\n".format(pkg))
-    #    self.config.events.DoneAddingAURPackageToInstalledDB(pkg=pkg)
 
     def update(self, force=None):
         """There is no need to update because we always issue an RPC request"""

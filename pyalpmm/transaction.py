@@ -127,9 +127,10 @@ class Transaction(object):
     # those 5 methods wrap the Transaction events to the Events instance
     def __callback_download_progress(self, fn, transfered, filecount):
         self.events.ProgressDownload(
-            filename=fn, transfered=transfered, filecount=filecount)
+            filename=fn, transfered=transfered, filecount=filecount
+        )
     def __callback_download_total_progress(self, total):
-        self.events.ProgressDownloadTotal(total=total)
+        self.events.ProgressDownloadTotal(total=total, pkgs=self.get_targets())
     def __callback_event(self, event, data1, data2):
         if event == p.PM_TRANS_EVT_CHECKDEPS_START:
             self.events.StartCheckingDependencies()

@@ -17,7 +17,7 @@ import datetime
 
 from tools import AskUser
 
-class Events:
+class Events(object):
     last_event, logfile = None, None
     names = (# general events
              "StartCheckingDependencies",         # ()
@@ -33,43 +33,39 @@ class Events:
              "DoneRemovingPackage",               # (pkg: PackageItem)
              "DoneUpgradingPackage",              # (pkg, from_pkg: PackageItem)
              # alpm "questions"
-             "AskInstallIgnorePkgRequired",
-             "AskInstallIgnorePkg",
-             "AskUpgradeLocalNewer",
-             "AskRemoveHoldPkg",
-             "AskReplacePkg",
-             "AskRemoveConflictingPackage",
-             "AskRemoveCorruptedPackage",
+             "AskInstallIgnorePkgRequired",       # (pkg, req_pkg: PackageItem)
+             "AskInstallIgnorePkg",               # (pkg: PackageItem)
+             "AskUpgradeLocalNewer",              # (pkg: PackageItem)
+             "AskRemoveHoldPkg",                  # (pkg: PackageItem)
+             "AskReplacePkg",                     # (pkg, rep_pkg: PackageItem, repo: str)
+             "AskRemoveConflictingPackage",       # (pkg, conf_pkg: PackageItem)
+             "AskRemoveCorruptedPackage",         # (pkg: PackageItem)
              # database updates
              "DatabaseUpToDate",                  # (repo: str)
              "DatabaseUpdated",                   # (repo: str)
              "DatabaseUpdateError",               # (repo: str)
-             #"StartLocalAURPackageSearch",        # ()
-             #"DoneLocalAURPackageSearch",         # (pkgs: list of PackageItem)
-             #"DoneAddingAURPackageToInstalledDB", # (pkg: PackageItem)
              # transaction info
-             "DoneTransactionInit",
-             "DoneTransactionDestroy",
-             "DoneSettingTargets",
-             "DoneTransactionPrepare",
-             "DoneTransactionCommit",
+             "DoneTransactionInit",               # ()
+             "DoneTransactionDestroy",            # ()
+             "DoneSettingTargets",                # (targets: (pkglist: list of str, grplist: list of str)
+             "DoneTransactionPrepare",            # ()
+             "DoneTransactionCommit",             # ()
              # System info
              "ProcessingPackages",                # (pkgs: list of PackageItem)
              "ReInstallingPackage",               # (pkg: PackageItem)
              # session info
-             "StartInitSession",
-             "DoneInitSession",
-             "DoneApplyConfig",
+             "StartInitSession",                  # ()
+             "DoneInitSession",                   # ()
+             "DoneApplyConfig",                   # ()
              # options
-             "DoneReadingConfigFile",
-             "DoneSavingConfigFile",
+             "DoneReadingConfigFile",             # ()
              # progress handling
-             "ProgressDownload",
-             "ProgressDownloadTotal",
-             "ProgressInstall",
-             "ProgressRemove",
-             "ProgressUpgrade",
-             "ProgressConflict",
+             "ProgressDownload",                  # (transfered, filecount: int, filename: str)
+             "ProgressDownloadTotal",             # (total: int, pkgs: list of PackageItem)
+             "ProgressInstall",                   # (pkgname: str, percent: int)
+             "ProgressRemove",                    # (pkgname: str, percent: int)
+             "ProgressUpgrade",                   # (pkgname: str, percent: int)
+             "ProgressConflict",                  # (pkgname: str, percent: int)
              # building
              "DoneBuildDirectoryCleanup",
              "StartABSBuildPrepare",
@@ -80,23 +76,31 @@ class Events:
              "StartBuildEdit",
              "DoneBuildEdit",
 
-             # log
+             # log - not a real event though
              "Log"
 
         )
-    def __getattr__(self, name):
-        self.last_event = name
-        if name in self.names:
-            return self.doNothing
-        raise AttributeError(name)
+    def __init__(self):
+        self.bound_events = [meth for meth in dir(self) if meth in self.names]
+
+    def __setattr__(self, attr, value):
+        if attr in self.names:
+            self.bound_events.append(attr)
+        return object.__setattr__(self, attr, value)
+
+    def __getattribute__(self, attr):
+        if attr in object.__getattribute__(self, "names"):
+            object.__getattribute__(self, "Log")(event=attr, data={})
+            if attr not in object.__getattribute__(self, "bound_events"):
+                return object.__getattribute__(self, "doNothing")
+        return object.__getattribute__(self, attr)
 
     def doNothing(self, **kw):
         """A dummy callback function, just forwards the event to the logger"""
-        self.Log(event=self.last_event, data=kw)
+        pass
 
     def Log(self, **kw):
-        """
-        The logger, this will be replaced with logger from python
+        """The logger, this will be replaced with logger from python
         in the near future
 
         - kw["event"]: name of the last occured event
@@ -110,12 +114,11 @@ class Events:
                  " ".join("%s: %s" % (k,v) for k,v in kw["data"].items())))
 
     def AskInstallIgnorePkgRequired(self, **kw):
-        """
-        Should pyalpmm upgrade a package, which is a member of the
+        """Should pyalpmm upgrade a package, which is a member of the
         IgnorePkg or IgnoreGrp lists and is required by another package?
 
-        - kw["pkg"]: instance of PackageItem - demanding package
-        - kw["req_pkg"]: instance of PackageItem - required package
+        - kw["pkg"]: instance of :class:`PackageItem` - demanding package
+        - kw["req_pkg"]: instance of :class:`PackageItem` - required package
         """
         if AskUser(("%s wants to have %s, "
                     "but it is in IgnorePkg/IgnoreGrp - proceed?") % \
@@ -124,11 +127,10 @@ class Events:
         return 0
 
     def AskInstallIgnorePkg(self, **kw):
-        """
-        A package, which you choose to upgrade, is a member of the IgnoreGrp
+        """A package, which you choose to upgrade, is a member of the IgnoreGrp
         or the IgnorePkg group.
 
-        - kw["pkg"]: instance of PackgeItem
+        - kw["pkg"]: instance of :class:`PackageItem`
         """
         if AskUser("%s is in IgnorePkg/IgnoreGrp - proceed anyway?" % \
                    kw["pkg"].name).answer == "y":
@@ -136,11 +138,10 @@ class Events:
         return 0
 
     def AskUpgradeLocalNewer(self, **kw):
-        """
-        The local version of the package is newer than the one ,which is
+        """The local version of the package is newer than the one ,which is
         about to be upgraded.
 
-        - kw["pkg"]: instance of PackageItem
+        - kw["pkg"]: instance of :class:`PackageItem`
         """
         if AskUser("%s's local version is newer - upgrade anyway?" % \
                    kw["pkg"].name).answer == "y":
@@ -148,10 +149,9 @@ class Events:
         return 0
 
     def AskRemovePkg(self, **kw):
-        """
-        A member of the HoldPkg list is about to be removed.
+        """A member of the HoldPkg list is about to be removed.
 
-        - kw["pkg"]: instance of PackageItem
+        - kw["pkg"]: instance of :class:`PackageItem`
         """
         if AskUser("%s is in HoldPkg - remove anyway?" % \
                    kw["pkg"]).answer == "y":
@@ -159,12 +159,11 @@ class Events:
         return 0
 
     def AskReplacePkg(self, **kw):
-        """
-        Should one package be replaced by another package?
+        """Should one package be replaced by another package?
 
-        - kw["pkg"]: instance of PackageItem - "old" package
+        - kw["pkg"]: instance of :class:`PackageItem` - "old" package
         - kw["repo"]: name of the repository
-        - kw["rep_pkg"]: instance of PackageItem - "new" package
+        - kw["rep_pkg"]: instance of :class:`PackageItem` - "new" package
         """
         if AskUser("%s should be replaced with %s/%s - proceed?" % \
             (kw["pkg"].name, kw["repo"], kw["rep_pkg"].name)).answer == "y":
@@ -172,11 +171,10 @@ class Events:
         return 0
 
     def AskRemoveConflictingPackage(self, **kw):
-        """
-        Should pyalpmm remove one of two conflicting packages now?
+        """Should pyalpmm remove one of two conflicting packages now?
 
-        - kw["pkg"]: instance of PackgeItem - stays
-        - kw["conf_pkg"]: instance of PackageItem - to-be-removed
+        - kw["pkg"]: instance of :class:`PackageItem` - stays
+        - kw["conf_pkg"]: instance of :class:`PackageItem` - to-be-removed
         """
         if AskUser("%s conflicts with %s - remove %s" % \
             (kw["pkg"].name, kw["conf_pkg"].name, kw["conf_pkg"].name)
@@ -185,10 +183,9 @@ class Events:
         return 0
 
     def AskRemoveCorruptedPackage(self, **kw):
-        """
-        We found a corrupted package and want to remove it.
+        """We found a corrupted package and want to remove it.
 
-        - kw["pkg"]: instance of PackageItem
+        - kw["pkg"]: instance of :class:`PackageItem`
         """
         if AskUser("%s is corrupted - remove it?" % \
                    kw["pkg"].name).answer == "y":

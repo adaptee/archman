@@ -1,15 +1,16 @@
 #!/usr/bin/python
 
 import os, sys
-from time import time as utime
-from random import choice
+from time import time as utime, sleep
+from random import choice, randint
 from optparse import OptionParser, OptionGroup
 
 from pyalpmm import Session, PyALPMMConfiguration, Events, System
 from pyalpmm.transaction import SyncTransaction, RemoveTransaction, \
      UpgradeTransaction, AURTransaction, DatabaseUpdateTransaction, \
      SysUpgradeTransaction
-from pyalpmm.tools import AskUser, CriticalError, FancyPackage
+from pyalpmm.tools import AskUser, CriticalError, FancyPackage, ProgressBar, \
+     UserError, FancySize
 from pyalpmm.pbuilder import PackageBuilder, BuildError
 from pyalpmm.database import DatabaseError
 
@@ -17,6 +18,14 @@ import pyalpmm_raw as p
 
 
 class MMacmanEvents(Events):
+    progressbar_sleep = property(lambda s: 1/float(randint(5,20)))
+    def __init__(self):
+        super(MMacmanEvents, self).__init__()
+        self.progress_obj = None
+        self.processed_pkgs = None
+        self.active_pkg = None
+        self.line_dirty = False
+
     def DatabaseUpToDate(self, **kw):
         print "[i] Database up to date: {0}".format(kw["repo"])
 
@@ -36,25 +45,117 @@ class MMacmanEvents(Events):
         print "[+] Retrieving from {0}".format(kw["repo"])
 
     def StartUpgradingPackage(self, **kw):
-        print "[+] Upgrading: {0.name}-{0.version}".format(kw["pkg"])
+        if self.line_dirty:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            self.line_dirty = False
+        self.progress_obj = None
+        self.active_pkg = kw["pkg"]
 
     def StartRemovingPackage(self, **kw):
-        print "[+] Removing: {0.name}-{0.version}".format(kw["pkg"])
+        if self.line_dirty:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            self.line_dirty = False
+        self.progress_obj = None
+        self.active_pkg = kw["pkg"]
 
     def StartInstallingPackage(self, **kw):
-        print "[+] Installing: {0.name}-{0.version}".format(kw["pkg"])
+        if self.line_dirty:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            self.line_dirty = False
+        self.progress_obj = None
+        self.active_pkg = kw["pkg"]
+
+    def DoneInstallingPackage(self, **kw):
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    def DoneRemovingPackage(self, **kw):
+        # pkg
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    def DoneUpgradingPackage(self, **kw):
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
     def StartCheckingPackageIntegrity(self):
-        print "[+] Checking package integrity..."
+        sys.stdout.write("[+] Checking package integrity...\r\n")
+        sys.stdout.flush()
 
     def StartCheckingFileConflicts(self):
-        print "[+] Checking file conflicts..."
+        self.progress_obj = None
+        pass
 
     def StartBuild(self, **kw):
         print "[+] Starting build: {0.name}-{0.version}".format(kw["pkg"])
 
     def ReInstallingPackage(self, **kw):
         print "[i] Reinstalling package: {0.name}-{0.version}".format(kw["pkg"])
+
+    def _progress(self, operation, kw):
+        if self.progress_obj is None:
+            desc = "{0} {1}".format(operation, kw["pkgname"])
+            self.progress_obj = ProgressBar(100, desc)
+
+        sys.stdout.write(self.progress_obj.step_to(kw["percent"]) + "\r")
+        sys.stdout.flush()
+
+        self.line_dirty = True
+
+    def ProgressDownload(self, **kw):
+        if self.progress_obj is None or kw["filename"].startswith(self.active_pkg.name):
+            self.active_pkg = None
+            for name, pkg in self.processed_pkgs.items():
+                if kw["filename"].find(name) == 0:
+                    self.active_pkg = pkg
+                    break
+
+            self.progress_obj = ProgressBar(
+                int(self.active_pkg.size.raw),
+                kw["filename"]
+            )
+        sys.stdout.write(self.progress_obj.step_to(kw["transfered"]) + "\r")
+        sys.stdout.flush()
+
+    def ProgressDownloadTotal(self, **kw):
+        if kw["total"] == 0:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+        self.progress_obj = None
+        self.processed_pkgs = dict((p.name, p) for p in kw["pkgs"])
+
+    def ProgressInstall(self, **kw):
+        self._progress("Installing:", kw)
+
+    def ProgressRemove(self, **kw):
+        self._progress("Removing:", kw)
+
+    def ProgressUpgrade(self, **kw):
+        self._progress("Upgrading:", kw)
+
+    def ProgressConflict(self, **kw):
+        self._progress("Checking File Conflicts:", kw)
+
+    def ProcessingPackages(self, **kw):
+        total = 0
+        print "[i] Processing Packages:"
+        for pkg in kw["pkgs"]:
+            total += pkg.isize.raw
+            show_size = ("{0.size}" if pkg.isize.raw == pkg.size.raw else \
+                         "{0.size} / {0.isize}").format(pkg)
+            name = "    {0.name}-{0.version}".format(pkg)
+            print "{0:30}{1}".format(name, show_size)
+
+        print
+        print "[i]    Total size: {0}".format(FancySize(total))
+        if AskUser("[?] Really continue (y/n)? ").answer == "n":
+            print "[e] ok, stopping operation"
+            raise UserError("User aborted operation!")
+        self.progress_obj = None
+
 
 parser = OptionParser()
 group = OptionGroup(parser, "General Options",
@@ -124,6 +225,16 @@ group.add_option("", "--no-prepare", dest="build_no_prepare", action="store_true
                   help="Don't prepare (download scripts and sources) the build")
 parser.add_option_group(group)
 
+
+group = OptionGroup(parser, "Evil Options",
+                    "only --args are used in the evil opts")
+group.add_option("", "--clear-pkg-cache", dest="cpc", action="store_true",
+                  help="cleanup the package cache directory")
+parser.add_option_group(group)
+
+
+#import wingdbstub
+
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
@@ -137,32 +248,47 @@ config = PyALPMMConfiguration(
 #events.logfile = config.logfile
 
 session = Session(config)
-system = System(session)
 
-# from now on full (global) exception catching
-def exceptionhooker(exception_type, exception_value, traceback_obj):
-    print "[e] A {0} occured:".format(exception_type.__name__)
-    print "[e] {0}".format(exception_value)
+# global exception catcher func callback
+def exc_cb(type_, val, trace):
+    print "[e] A {0} occured:".format(type_.__name__)
+    print "[e] {0}".format(val)
+def sig_cb(signal, frame):
+    print "[e] Got Signal: {0}".format(signal)
+    print "[e] {0}".format(frame)
+    print "cannot cancel, wait till end"
+system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
+#system = System(session)
 
-sys.excepthook = exceptionhooker
 
-if options.force or options.nodeps or options.download_only:
-    print "[i] You have set the following commandline options:"
-    if options.force:
-        print "[i]     Forced transaction (-f)"
-    if options.nodeps:
-        print "[i]     Ignoring dependencies (-d)"
-    if options.download_only:
-        print "[i]     Download packages only (-w)"
-    if options.build_install:
-        print "[i]     Installing the freshly built package (-I)"
-    if options.build_edit:
-        print "[i]     Edit the PKGBUILD before makepkg (-e)"
-    if options.build_no_cleanup:
-        print "[i]     Don't cleanup build {0.build_dir} (--no-cleanup)". \
-              format(config)
-    if options.build_no_prepare:
-        print "[i]     Do not prepare PackageBuilder (--no-prepare)"
+if options.cpc:
+    print "[i] evil option detected"
+    print "[i] deleting cache dirs"
+    import shutil
+    for path in config.cachedirs:
+        shutil.rmtree(path, True)
+        print "[!] deleted: {0}".format(path)
+
+if options.cpc: # or ...
+    print "[i] always exiting after an evil option"
+    sys.exit()
+
+#print "[i] You have set the following commandline options:"
+if options.force:
+    print "[i]     Forced transaction (-f)"
+if options.nodeps:
+    print "[i]     Ignoring dependencies (-d)"
+if options.download_only:
+    print "[i]     Download packages only (-w)"
+if options.build_install:
+    print "[i]     Installing the freshly built package (-I)"
+if options.build_edit:
+    print "[i]     Edit the PKGBUILD before makepkg (-e)"
+if options.build_no_cleanup:
+    print "[i]     Don't cleanup build {0.build_dir} (--no-cleanup)". \
+          format(config)
+if options.build_no_prepare:
+    print "[i]     Do not prepare PackageBuilder (--no-prepare)"
 
 if options.update:
     system.update_databases()
@@ -172,6 +298,18 @@ if options.sync and options.search:
     for pkg in result:
         print "[P] {0.repo}/{0.name}-{0.version} ".format(pkg)
         print "       {0.desc}".format(pkg)
+
+elif options.query and options.owns:
+    print "[+] looking for the owner of: '{0}'".format(args[0])
+    filename = args[0].startswith("/") and args[0][1:] or args[0]
+    pkg = system.owner_of_file(filename)
+    if pkg is None:
+        print ("[-] {0} was not found in any known package, \
+               only the local repository can be searched.".format(args[0]))
+        sys.exit()
+
+    print "[+] '{0}' was found in the package: {1.name}-{1.version}".\
+          format(args[0], pkg)
 
 elif options.query:
     pkg = session.db_man.get_local_package(args[0])
@@ -186,17 +324,6 @@ elif options.query:
                 print "[i] {0}".format(fn)
         else:
             print FancyPackage(pkg)
-    elif options.owns:
-        print "[+] looking for a package which contains: {0}".format(args[0])
-        filename = args[0].startswith("/") and args[0][1:] or args[0]
-        pkg = system.owner_of_file(filename)
-        if pkg is None:
-            print ("[-] {0} was not found in any known package, \
-                   only the local repository can be searched.".format(args[0]))
-            sys.exit()
-
-        print "The file: {0} was found in the package: {1.name}-{1.version}".\
-              format(filename, pkg)
 
 elif options.upgrade:
     system.upgrade_packages(targets=args)
