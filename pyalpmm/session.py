@@ -135,6 +135,7 @@ class System(object):
             tobj.commit()
 
     def _is_package_installed(self, pkgname):
+        print pkgname
         loc_pkg = self.session.db_man.get_local_package(pkgname)
         syn_pkg = self.session.db_man.get_sync_package(pkgname)
         if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
@@ -172,11 +173,11 @@ class System(object):
             if not os.path.exists(item) or not os.path.isfile(item):
                 raise SystemError("The file: {0} does not exist!".format(item))
 
-            pkgname = item.split("-")[:-3]
-            pkg = self._is_package_installed(pkgname)
+            pkgname = "-".join(os.path.basename(item).split("-")[:-3])
+            pkg = self._is_package_installed(pkgname) and \
+                  self.events.ReInstallingPackage(pkg=pkg)
 
-            if item is not None:
-                self.events.ReInstallingPackage(pkg=pkg)
+
         self._handle_transaction(UpgradeTransaction, targets=targets)
 
     def build_packages(self, targets):

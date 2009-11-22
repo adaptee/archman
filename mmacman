@@ -203,6 +203,10 @@ group.add_option("-Q", "--query", dest="query", action="store_true",
                   help="List all local packages")
 group.add_option("", "--aur", dest="aur", action="store_true",
                  help="While listing all packages, check which ones are from AUR")
+group.add_option("", "--loner", dest="loner", action="store_true",
+                 help="Search for 'lonely' packages, means not explicitly " \
+                      "installed packages, which are not required by any " \
+                      "other installed package")
 group.add_option("-F", "--files", dest="show_files", action="store_true",
                  help="List of all files in the given package")
 group.add_option("-o", "--owns", dest="owns", action="store_true",
@@ -327,6 +331,14 @@ elif options.query and options.info:
         else:
             print FancyPackage(pkg)
 
+elif options.query and options.loner:
+    db = session.db_man
+    print "[+] Starting 'lonely' package search"
+    dm = dependency_map = {}
+    for pkg in db.get_local_packages():
+        for dep in pkg.depends:
+            dm.setdefault(dep.name, []).append(pkg.name)
+
 elif options.query:
     db = session.db_man
     print "[+] Listing all installed packages: "
@@ -334,7 +346,7 @@ elif options.query:
           "explicitly installed)"
     counter, manually_installed = 0, 0
     aur_pkgs = set()
-    for pkg in session.db_man.get_local_packages():
+    for pkg in db.get_local_packages():
         counter += 1
         in_aur, manually_installed = 0, 0
         if pkg.reason.raw == p.PM_PKG_REASON_EXPLICIT:
