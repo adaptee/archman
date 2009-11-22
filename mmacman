@@ -331,22 +331,36 @@ elif options.query and options.info:
             print FancyPackage(pkg)
 
 elif options.query:
-    print "[+] Listing all installed packages:"
-    counter = 0
+    db = session.db_man
+    print "[+] Listing all installed packages: "
+    print "[h] (left [X] stands for AUR, the right one for beeing " \
+          "explicitly installed)"
+    counter, manually_installed = 0, 0
     aur_pkgs = set()
     for pkg in session.db_man.get_local_packages():
-        print "    {0}-{1}".format(pkg.name, pkg.version)
         counter += 1
-
-        if options.aur and not session.db_man.get_package(pkg.name, repos=config.repos):
+        in_aur, manually_installed = 0, 0
+        if pkg.reason.raw == p.PM_PKG_REASON_EXPLICIT:
+            manually_installed += 1
+        if options.aur and not db.get_package(pkg.name, repos=config.repos):
             aur_pkgs.add(pkg)
 
-    print "[i] Together there are {0} packages installed!".format(counter)
+        pkg_opts = "[{0}] [{1}]".format(
+            ("x" if pkg in aur_pkgs else " "),
+            ("x" if manually_installed > 10 else " ")
+        )
+        print " {0} {1}-{2}".format(pkg_opts, pkg.name, pkg.version)
+
+
+    print "[i] {0} packages installed!".format(counter)
     if options.aur:
-        print ("[i] {0} pkgs could be found in regular repos, " \
-               "the {1} seem to be from AUR"). \
-               format((counter-len(aur_pkgs)), len(aur_pkgs))
-        print ", ".join(aur_pkgs)
+        regularpkgs = counter - len(aur_pkgs)
+        aurpkgs = counter - len(aur_pkgs) - regularpkgs
+        print "[i] {0} packages from 'regular' repositories".format(regularpkgs)
+        print "[i] {0} packages from AUR".format(aurpkgs)
+        print "[i] Listing AUR packages now:"
+        for pkg in aur_pkgs:
+            print "  - {0.name}-{0.version}".format(pkg)
 
 elif options.upgrade:
     system.upgrade_packages(targets=args)

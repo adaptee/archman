@@ -296,19 +296,6 @@ class UpgradeTransaction(Transaction):
     """
     trans_type = p.PM_TRANS_TYPE_UPGRADE
 
-    #def commit(self):
-    #    """After the commit we want to check the upgraded packages, if some are
-    #    from AUR, add those to the aur installed pkgs database
-    #    """
-    #    pkgs = self.get_targets()
-    #    ret = super(UpgradeTransaction, self).commit()
-
-        #if self.session.config.aur_support:
-        #    for pkg in pkgs:
-        #        if pkg.name in self.session.db_man["aur"]:
-        #            self.session.db_man["aur"].add_pkg_to_local_db(pkg)
-    #    return ret
-
 class AURTransaction(UpgradeTransaction):
     """The AURTransaction handles all the building, installing of a AUR package
     """
@@ -355,8 +342,7 @@ class SysUpgradeTransaction(SyncTransaction):
         self.prepare()
 
     def prepare(self):
-        """
-        For preparation there is a special C function, which we use to
+        """For preparation there is a special C function, which we use to
         get the needed targets into the transaction
         """
         if p.alpm_trans_sysupgrade(self.session.config.allow_downgrade) == -1:
@@ -370,7 +356,7 @@ class DatabaseUpdateTransaction(SyncTransaction):
         self.target_dbs = dbs
 
     def prepare(self):
-        """No need to prepare for a DatabaseUpdateTransaction"""
+        """No need to prepare for a :class:`DatabaseUpdateTransaction`"""
         pass
 
     def commit(self):
