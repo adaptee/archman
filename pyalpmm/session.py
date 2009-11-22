@@ -174,9 +174,8 @@ class System(object):
                 raise SystemError("The file: {0} does not exist!".format(item))
 
             pkgname = "-".join(os.path.basename(item).split("-")[:-3])
-            pkg = self._is_package_installed(pkgname) and \
-                  self.events.ReInstallingPackage(pkg=pkg)
-
+            pkg = self._is_package_installed(pkgname)
+            if pkg: self.events.ReInstallingPackage(pkg=pkg)
 
         self._handle_transaction(UpgradeTransaction, targets=targets)
 

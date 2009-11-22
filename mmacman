@@ -334,10 +334,14 @@ elif options.query and options.info:
 elif options.query and options.loner:
     db = session.db_man
     print "[+] Starting 'lonely' package search"
+
+    # first build a map of dependencies (keys)
     dm = dependency_map = {}
     for pkg in db.get_local_packages():
         for dep in pkg.depends:
             dm.setdefault(dep.name, []).append(pkg.name)
+
+    for
 
 elif options.query:
     db = session.db_man
