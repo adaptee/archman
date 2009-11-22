@@ -163,13 +163,16 @@ class System(object):
         self._handle_transaction(RemoveTransaction, targets=targets)
 
     def upgrade_packages(self, targets):
-        """Upgrade the given targets from remote repositories if available.
+        """Upgrade the given targets from given path/files
         (``pacman -U <targets>``)
 
         :param targets: pkgfilenames as a list of str
         """
         for item in targets:
-            pkg = self._is_package_installed(item)
+            if not os.path.exists(item) or not os.path.isfile(item):
+                raise SystemError("The file: {0} does not exist!".format(item))
+            # pkg = self._is_package_installed(item) ### simply wrong
+            # as this is only to install from file
             if pkg is not None:
                 self.events.ReInstallingPackage(pkg=pkg)
         self._handle_transaction(UpgradeTransaction, targets=targets)

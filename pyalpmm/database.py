@@ -270,7 +270,6 @@ class DatabaseManager(object):
 
         try:
             return self._handle_result(found, raise_ambiguous)
-
         except DatabaseError as e:
             e.format("name_eq={0}".format(pkgname))
             raise e

@@ -72,10 +72,12 @@ class ProgressBar(object):
 
     def step_to(self, value):
         """This is the method called from outside to feed the
-        :class:`ProgressBar` instance with new data.
+        :class:`ProgressBar` instance with new data. Also the process is sent
+        to sleep for 200ms - keeps cpu usage low.
 
         :param value: the now reached value
         """
+        time.sleep(0.2)
         per_finished = value / (self.endvalue/100.)
         filled = int(math.ceil((self.bar_width/100.) * per_finished))
 

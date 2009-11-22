@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import os, sys
-from time import time as utime, sleep
+from time import time as utime
 from random import choice, randint
 from optparse import OptionParser, OptionGroup
 
@@ -201,6 +201,8 @@ group = OptionGroup(parser, "Query Actions",
                     "-Q activates the Query Actions")
 group.add_option("-Q", "--query", dest="query", action="store_true",
                   help="List all local packages")
+group.add_option("", "--aur", dest="aur", action="store_true",
+                 help="While listing all packages, check which ones are from AUR")
 group.add_option("-F", "--files", dest="show_files", action="store_true",
                  help="List of all files in the given package")
 group.add_option("-o", "--owns", dest="owns", action="store_true",
@@ -260,8 +262,8 @@ def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
     print "[e] {0}".format(frame)
     print "cannot cancel, wait till end"
-#system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
-system = System(session)
+system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
+#system = System(session)
 
 
 if options.cpc:
@@ -314,7 +316,7 @@ elif options.query and options.owns:
     print "[+] '{0}' was found in the package: {1.name}-{1.version}".\
           format(args[0], pkg)
 
-elif options.query:
+elif options.query and options.info:
     pkg = session.db_man.get_local_package(args[0])
     if pkg is None:
         print "[-] Sorry, haven't found a match for: {0}".format(args[0])
@@ -327,6 +329,24 @@ elif options.query:
                 print "[i] {0}".format(fn)
         else:
             print FancyPackage(pkg)
+
+elif options.query:
+    print "[+] Listing all installed packages:"
+    counter = 0
+    aur_pkgs = set()
+    for pkg in session.db_man.get_local_packages():
+        print "    {0}-{1}".format(pkg.name, pkg.version)
+        counter += 1
+
+        if options.aur and not session.db_man.get_package(pkg.name, repos=config.repos):
+            aur_pkgs.add(pkg)
+
+    print "[i] Together there are {0} packages installed!".format(counter)
+    if options.aur:
+        print ("[i] {0} pkgs could be found in regular repos, " \
+               "the {1} seem to be from AUR"). \
+               format((counter-len(aur_pkgs)), len(aur_pkgs))
+        print ", ".join(aur_pkgs)
 
 elif options.upgrade:
     system.upgrade_packages(targets=args)
