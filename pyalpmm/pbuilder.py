@@ -112,7 +112,7 @@ class PackageBuilder(object):
             os.chown(self.path, c.build_uid, c.build_gid)
             rpipe, wpipe = os.pipe()
             pid = os.fork()
-            if pid:
+            if pid == 0:
                 os.setuid(c.build_uid)
                 ret = os.system(makepkg)
                 if ret != 0:

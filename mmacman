@@ -237,9 +237,6 @@ group.add_option("", "--clear-pkg-cache", dest="cpc", action="store_true",
                   help="cleanup the package cache directory")
 parser.add_option_group(group)
 
-
-#import wingdbstub
-
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
@@ -262,8 +259,8 @@ def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
     print "[e] {0}".format(frame)
     print "cannot cancel, wait till end"
-system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
-#system = System(session)
+#system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
+system = System(session)
 
 
 if options.cpc:
@@ -347,7 +344,7 @@ elif options.query:
 
         pkg_opts = "[{0}] [{1}]".format(
             ("x" if pkg in aur_pkgs else " "),
-            ("x" if manually_installed > 10 else " ")
+            ("x" if pkg.reason.raw == p.PM_PKG_REASON_EXPLICIT else " ")
         )
         print " {0} {1}-{2}".format(pkg_opts, pkg.name, pkg.version)
 
@@ -355,9 +352,8 @@ elif options.query:
     print "[i] {0} packages installed!".format(counter)
     if options.aur:
         regularpkgs = counter - len(aur_pkgs)
-        aurpkgs = counter - len(aur_pkgs) - regularpkgs
         print "[i] {0} packages from 'regular' repositories".format(regularpkgs)
-        print "[i] {0} packages from AUR".format(aurpkgs)
+        print "[i] {0} packages from AUR".format(len(aur_pkgs))
         print "[i] Listing AUR packages now:"
         for pkg in aur_pkgs:
             print "  - {0.name}-{0.version}".format(pkg)

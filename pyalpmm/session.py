@@ -19,7 +19,7 @@ from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
 from tools import CriticalError
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
-     SyncTransaction
+     SyncTransaction, DatabaseError
 
 class SessionError(CriticalError):
     pass
@@ -136,7 +136,7 @@ class System(object):
 
     def _is_package_installed(self, pkgname):
         loc_pkg = self.session.db_man.get_local_package(pkgname)
-        syn_pkg = self.session.db_man.get_local_package(pkgname)
+        syn_pkg = self.session.db_man.get_sync_package(pkgname)
         if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
             return loc_pkg
         return False
@@ -171,9 +171,11 @@ class System(object):
         for item in targets:
             if not os.path.exists(item) or not os.path.isfile(item):
                 raise SystemError("The file: {0} does not exist!".format(item))
-            # pkg = self._is_package_installed(item) ### simply wrong
-            # as this is only to install from file
-            if pkg is not None:
+
+            pkgname = item.split("-")[:-3]
+            pkg = self._is_package_installed(pkgname)
+
+            if item is not None:
                 self.events.ReInstallingPackage(pkg=pkg)
         self._handle_transaction(UpgradeTransaction, targets=targets)
 
