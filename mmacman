@@ -263,8 +263,8 @@ def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
     print "[e] {0}".format(frame)
     print "cannot cancel, wait till end"
-#system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
-system = System(session)
+system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
+#system = System(session)
 
 
 if options.cpc:
@@ -340,8 +340,20 @@ elif options.query and options.loner:
     for pkg in db.get_local_packages():
         for dep in pkg.depends:
             dm.setdefault(dep.name, []).append(pkg.name)
+    # now we just check, if there is a not required package which was not
+    # explicitly installed by the user
+    loners = set()
+    for pkg in db.get_local_packages():
+        if pkg.name not in dm and pkg.reason == p.PM_PKG_REASON_EXPLICIT:
+            loners.add(pkg)
 
-    for
+    print "[+] Search completed!"
+    if len(loners) == 0:
+        print "[+] There were no loners found on your system!"
+    else:
+        print "[+] I have found the following loners on your system:"
+        for pkg in loners:
+            print "[i] {0.name}-{0.version}".format(pkg)
 
 elif options.query:
     db = session.db_man

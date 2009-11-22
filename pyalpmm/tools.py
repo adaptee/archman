@@ -77,7 +77,7 @@ class ProgressBar(object):
 
         :param value: the now reached value
         """
-        time.sleep(0.2)
+        time.sleep(0.01)
         per_finished = value / (self.endvalue/100.)
         filled = int(math.ceil((self.bar_width/100.) * per_finished))
 

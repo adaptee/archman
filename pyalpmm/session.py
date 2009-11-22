@@ -135,7 +135,6 @@ class System(object):
             tobj.commit()
 
     def _is_package_installed(self, pkgname):
-        print pkgname
         loc_pkg = self.session.db_man.get_local_package(pkgname)
         syn_pkg = self.session.db_man.get_sync_package(pkgname)
         if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
