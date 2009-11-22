@@ -29,7 +29,7 @@ class ProgressBar(object):
         "fill"      : "#"
     }
     prefix = "[i] "
-    pad_right = 1
+    pad_right = 0
 
     def __init__(self, endvalue, label=None, length=None):
         self.endvalue = endvalue

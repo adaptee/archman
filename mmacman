@@ -25,6 +25,7 @@ class MMacmanEvents(Events):
         self.processed_pkgs = None
         self.active_pkg = None
         self.line_dirty = False
+        self.last_total_download = None
 
     def DatabaseUpToDate(self, **kw):
         print "[i] Database up to date: {0}".format(kw["repo"])
@@ -106,7 +107,8 @@ class MMacmanEvents(Events):
         self.line_dirty = True
 
     def ProgressDownload(self, **kw):
-        if self.progress_obj is None or kw["filename"].startswith(self.active_pkg.name):
+        if self.progress_obj is None or \
+           kw["filename"].startswith(self.active_pkg.name):
             self.active_pkg = None
             for name, pkg in self.processed_pkgs.items():
                 if kw["filename"].find(name) == 0:
@@ -121,9 +123,10 @@ class MMacmanEvents(Events):
         sys.stdout.flush()
 
     def ProgressDownloadTotal(self, **kw):
-        if kw["total"] == 0:
+        if self.last_total_download is None:
             sys.stdout.write("\n")
             sys.stdout.flush()
+
         self.progress_obj = None
         self.processed_pkgs = dict((p.name, p) for p in kw["pkgs"])
 
@@ -257,8 +260,8 @@ def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
     print "[e] {0}".format(frame)
     print "cannot cancel, wait till end"
-system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
-#system = System(session)
+#system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
+system = System(session)
 
 
 if options.cpc:

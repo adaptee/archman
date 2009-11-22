@@ -129,7 +129,9 @@ class System(object):
         tobj = tcls(self.session, **kw)
         with tobj:
             tobj.aquire()
-            self.events.ProcessingPackages(pkgs=[p for p in tobj.get_targets()])
+            if not isinstance(tobj, DatabaseUpdateTransaction):
+                self.events.ProcessingPackages(
+                    pkgs=[p for p in tobj.get_targets()])
             tobj.commit()
 
     def _is_package_installed(self, pkgname):
