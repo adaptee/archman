@@ -16,7 +16,7 @@ import os, sys
 import pyalpmm_raw as p
 
 from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
-from tools import CriticalError
+from tools import CriticalError, CachedProperty
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
      SyncTransaction, DatabaseError
@@ -117,6 +117,14 @@ class System(object):
                     "The 'global_sig_cb' you passed is not callable")
             self._init_signal_handler(global_sig_cb)
 
+    @CachedProperty
+    def dependency_map(self):
+        dm = {}
+        for pkg in self.session.db_man.get_local_packages():
+            for dep in pkg.depends:
+                dm.setdefault(dep.name, []).append(pkg.name)
+        return dm
+
     def _is_root(self, critical=True):
         if self.session.config.rights == "root":
             return True
@@ -141,6 +149,21 @@ class System(object):
             return loc_pkg
         return False
 
+    def _is_package_unneeded(self, pkgname):
+        """Decide wheather a given package is not needed anymore. A package is
+        not needed anymore, if it wasn't explicitly installed and if it isn't
+        needed as a dependency
+
+        :param pkgname: name of the package as a string
+        """
+        pkg = self.session.db_man.get_local_package(pkgname)
+        if pkg is None:
+            #print "[-] The package: {0} is not installed".format(pkgname)
+            return True
+
+        return pkg.reason == p.PM_PKG_REASON_DEPEND and \
+               pkgname not in self.dependency_map
+
     def _init_global_exception_handler(self, callback):
         def exceptionhooker(exception_type, exception_value, traceback_obj):
             callback(exception_type, exception_value, traceback_obj)
@@ -155,11 +178,39 @@ class System(object):
                 callback
             )
 
-    def remove_packages(self, targets):
+    def remove_packages(self, targets, recursive=True):
         """Remove the given targets from the system. (``pacman -R <target>``)
 
         :param targets: pkgnames as a list of str
         """
+        db = self.session.db_man
+
+        # collect dependencies of the target packages
+        deps = set()
+        for pkgname in targets:
+            pkg = db.get_local_package(pkgname)
+            if pkg is None:
+                continue
+            deps.update(dep.name for dep in pkg.depends)
+        # delete dependencies, which are already inside targets
+        deps -= set(targets)
+
+        # resolving dependencies and deciding if we delete dependency
+        dep_targets = set()
+        while len(deps) > 0:
+            dep = deps.pop()
+            if self._is_package_unneeded(dep):
+                pkg = db.get_local_package(dep)
+
+                if not pkg:
+                    print "[-] The dependency: {0} is not installed".format(dep)
+                    continue
+
+                dep_targets.add(d.name for d in pkg.depends)
+
+                print ("[+] added package: {0} to targets, " \
+                       "isn't needed anymore").format(dep)
+
         self._handle_transaction(RemoveTransaction, targets=targets)
 
     def upgrade_packages(self, targets):
@@ -206,6 +257,12 @@ class System(object):
     def get_local_packages(self):
         """Get all local installed packages"""
         return self.session.db_man["local"].get_packages()
+
+    def get_unneeded_packages(self):
+        """Get all packages, which have not been installed explicitly and are
+        not a dependency from some other package."""
+        return set(pkg for pkg in db.get_local_packages() \
+                   if system._is_package_unnedded(pkg.name))
 
     def search_packages(self, pkgname):
         """Search for a query/pkgname in the repositories. Behave like

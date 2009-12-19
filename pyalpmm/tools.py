@@ -11,15 +11,34 @@ to fancy-fy some of the output made by mmacman/pyalpmm
 import time
 import sys, os
 import math
+from functools import update_wrapper
 
 import pyalpmm_raw as p
+
+def CachedProperty(method):
+    """A decorator which implements an advanced Property, which executes the
+    body of the decorated method just once and caches the result inside
+    the .
+
+    :param method: the decorated method
+    """
+    name = method.__name__
+    def _get(self):
+        return self.__dict__.setdefault(name, method(self))
+    update_wrapper(_get, method)
+
+    def _del(self):
+        self.__dict__ .pop(name, None)
+    return property(_get, None, _del)
+
 
 class ProgressBar(object):
     """This is a Quick-Shot on a ProgressBar to make `mmacman` a little
     more charming.
 
-    :param endvalue: Final Value, 100% equivalent
-    :param label: a describing label
+    :param endvalue: final value means 100percent as int (optional)
+    :param label: a describing label (optional)
+    :param length: set this to a positive int to get a fixed size bar (optional)
     """
     template = {
         "left"      : "[<",
@@ -31,12 +50,13 @@ class ProgressBar(object):
     prefix = "[i] "
     pad_right = 0
 
-    def __init__(self, endvalue, label=None, length=None):
+    def __init__(self, endvalue=None, label=None):
         self.endvalue = endvalue
         self.label = label or ""
-        self.length = length
+        self.percent = 0
+        self.tick = 0
 
-    def _get_bar(self, per_fin, filled):
+    def _get_bar(self, filled):
         """Return the :class:`ProgressBar` directly ready to write it on the
         screen. Oh no, I mean - ah whateva. Naming of all the spacing and stuff
         is done like that:
@@ -44,47 +64,72 @@ class ProgressBar(object):
         |---------------- window width(self.max_width) ------------------|
         |<prefix><label><space_left><full_bar_width><perc><right_space>  |
 
-        :param per_fin: percent of this task done
         :param filled: the number of chars filled with the "fill" char
         """
-        # progressbar data
-        per_fin = 100 if per_fin >= 100 or per_fin == "finished" else per_fin
-        filled = self.bar_width if filled > self.bar_width else filled
         empty = self.bar_width - filled
-
-        # extremly unprofessional, but that's how "guis" work
-        if per_fin == "finished":
-            per_fin, empty, filled = 100, 0, self.bar_width
+        self.tick += 1
 
         t = self.template
-        if self.length: # got a non-labeled progressbar
-            return "{0}{1}".format(
-                t["left"] + t["fill"]*filled + t["mid"]*empty + t["right"],
-                t["perc"].format(per_fin)
-            )
+        if self.endvalue is None:
+            mid = t["fill"] * filled
+            if empty == 0:
+                left_empty, right_empty = "", ""
+            else:
+                left_empty = t["mid"] * (empty - self.tick % empty)
+                right_empty = t["mid"] * (self.tick % empty)
 
-        return "{0:{1}}{2}{3}".format(
-            self.prefix + self.label,
-            self.space_left,
-            t["left"] + t["fill"]*filled + t["mid"]*empty + t["right"],
-            t["perc"].format(per_fin)
-        )
+            if self.label is None:
+                # get a endless, unlabled progressbar
+                return t["left"] + left_empty + mid + right_empty + t["right"]
+            # get a endless, labeled progressbar
+            return "{0:{1}}{2}".format(
+                self.label,
+                self.space_left,
+                t["left"] + left_empty + mid + right_empty + t["right"]
+            )
+        elif self.endvalue:
+            fill, mid = t["fill"] * filled, t["mid"] * empty
+            if self.label:
+                # get a deterministic, un-labeled progressbar
+                return "{0:{1}}{2}{3}".format(
+                    self.label,
+                    self.space_left,
+                    t["left"] + fill + mid + t["right"],
+                    t["perc"].format(self.percent)
+                )
+            # get a deterministic, labeled progressbar
+            return "{0}{1}".format(
+                t["left"] + fill + mid + t["right"],
+                t["perc"].format(self.percent)
+            )
 
     def step_to(self, value):
         """This is the method called from outside to feed the
         :class:`ProgressBar` instance with new data. Also the process is sent
-        to sleep for 200ms - keeps cpu usage low.
+        to sleep for some ms, but guess what: i don't think thats the right way
+        to lower the cputime needed by the process without sleep.
 
         :param value: the now reached value
         """
         time.sleep(0.01)
-        per_finished = value / (self.endvalue/100.)
-        filled = int(math.ceil((self.bar_width/100.) * per_finished))
-
-        if per_finished >= 100:
-            return self._get_bar("finished", self.bar_width)
+        if self.endvalue:
+            self.percent = min((value / (self.endvalue/100.)), 100)
+            filled = int(math.ceil((self.bar_width/100.) * self.percent))
         else:
-            return self._get_bar(per_finished, filled)
+            filled = min(self.bar_width, value)
+
+        return self._get_bar(filled)
+
+    def step_to_end(self):
+        """Should be called before jumping to the next line in order to have a
+        nice optical clean progressbar
+        """
+        if self.endvalue:
+            self.percent = 100
+
+        filled = self.bar_width
+
+        return self._get_bar(filled)
 
     @property
     def max_width(self):
@@ -109,7 +154,10 @@ class ProgressBar(object):
     def space_left(self):
         """This is the spacing used left of the whole bar"""
         return self.max_width - self.full_bar_width - \
-               self.pad_right - len(self.template["perc"].format(100))
+               self.pad_right - \
+               (len(self.template["perc"].format(100)) \
+                if self.endvalue else 0)
+
 
 class AskUser(object):
     """Ask the user on the console - can be answered only with the given

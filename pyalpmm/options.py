@@ -245,6 +245,7 @@ class PyALPMMConfiguration(ConfigMapper):
     build_install = CommandlineItem(0)
     build_no_cleanup = CommandlineItem(0)
     build_no_prepare = CommandlineItem(0)
+    no_recursive_remove = CommandlineItem(0)
 
     # need this, because the lockfile is not known on class create
     lockfile = property(lambda s: p.alpm_option_get_lockfile())

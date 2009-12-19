@@ -13,9 +13,12 @@ from pyalpmm.tools import AskUser, CriticalError, FancyPackage, ProgressBar, \
      UserError, FancySize
 from pyalpmm.pbuilder import PackageBuilder, BuildError
 from pyalpmm.database import DatabaseError
+from pyalpmm.item import PackageItem
 
 import pyalpmm_raw as p
 
+# debug WingIDE
+#import wingdbstub
 
 class MMacmanEvents(Events):
     progressbar_sleep = property(lambda s: 1/float(randint(5,20)))
@@ -24,6 +27,7 @@ class MMacmanEvents(Events):
         self.progress_obj = None
         self.processed_pkgs = None
         self.active_pkg = None
+        self.last_pkg = None
         self.line_dirty = False
         self.last_total_download = None
 
@@ -31,6 +35,11 @@ class MMacmanEvents(Events):
         print "[i] Database up to date: {0}".format(kw["repo"])
 
     def DatabaseUpdated(self, **kw):
+        if self.line_dirty:
+            self.line_dirty = False
+            sys.stdout.write("\r{0}\n".format(self.progress_obj.step_to_end()))
+            sys.stdout.flush()
+
         print "[+] Database updated: {0}".format(kw["repo"])
 
     def DatabaseUpdateError(self, **kw):
@@ -98,7 +107,7 @@ class MMacmanEvents(Events):
 
     def _progress(self, operation, kw):
         if self.progress_obj is None:
-            desc = "{0} {1}".format(operation, kw["pkgname"])
+            desc = "[i] {0} {1}".format(operation, kw["pkgname"])
             self.progress_obj = ProgressBar(100, desc)
 
         sys.stdout.write(self.progress_obj.step_to(kw["percent"]) + "\r")
@@ -107,27 +116,49 @@ class MMacmanEvents(Events):
         self.line_dirty = True
 
     def ProgressDownload(self, **kw):
-        if self.progress_obj is None or \
-           kw["filename"].startswith(self.active_pkg.name):
-            self.active_pkg = None
-            for name, pkg in self.processed_pkgs.items():
-                if kw["filename"].find(name) == 0:
-                    self.active_pkg = pkg
-                    break
+        fn = filename = kw["filename"]
 
-            self.progress_obj = ProgressBar(
-                int(self.active_pkg.size.raw),
-                kw["filename"]
-            )
-        sys.stdout.write(self.progress_obj.step_to(kw["transfered"]) + "\r")
+        if self.progress_obj is None:
+            self.active_pkg = "" if fn.endswith(".db.tar.gz") \
+                else PackageItem(None)
+        print "active: {0} last: {1}".format(self.active_pkg, self.last_pkg)
+        self.last_pkg = self.active_pkg
+
+        # PackageItem means package download
+        if isinstance(self.active_pkg, PackageItem):
+            for name, pkg in self.processed_pkgs.items():
+                if fn.find(name) == 0:
+                    self.active_pkg = pkg
+            size = int(pkg.size.raw)
+            label = "[D] {0.name}-{0.version}".format(self.active_pkg)
+        # str means database file download
+        elif isinstance(self.active_pkg, str):
+            self.active_pkg = fn
+            size = None
+            label = "[D] {0}".format(fn)
+
+        if self.progress_obj is None:
+            self.progress_obj = ProgressBar(size, label)
+
+        sys.stdout.write((self.progress_obj.step_to(kw["transfered"]) \
+                          if self.progress_obj.endvalue \
+                          else self.progress_obj.step_to(7)) + "\r")
         sys.stdout.flush()
+
+        self.line_dirty = True
+        if (self.progress_obj is not None and \
+            self.progress_obj.percent == 100) or \
+           self.active_pkg != self.last_pkg:
+            self.progress_obj = None
+            sys.stdout.write("\n")
+            sys.stdout.flush()
 
     def ProgressDownloadTotal(self, **kw):
         if self.last_total_download is None:
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-        self.progress_obj = None
+        #self.progress_obj = None
         self.processed_pkgs = dict((p.name, p) for p in kw["pkgs"])
 
     def ProgressInstall(self, **kw):
@@ -147,7 +178,7 @@ class MMacmanEvents(Events):
         print "[i] Processing Packages:"
         for pkg in kw["pkgs"]:
             total += pkg.isize.raw
-            show_size = ("{0.size}" if pkg.isize.raw == pkg.size.raw else \
+            show_size = ("{0.size}" if pkg.isize == pkg.size else \
                          "{0.size} / {0.isize}").format(pkg)
             name = "    {0.name}-{0.version}".format(pkg)
             print "{0:30}{1}".format(name, show_size)
@@ -157,7 +188,6 @@ class MMacmanEvents(Events):
         if AskUser("[?] Really continue (y/n)? ").answer == "n":
             print "[e] ok, stopping operation"
             raise UserError("User aborted operation!")
-        self.progress_obj = None
 
 
 parser = OptionParser()
@@ -207,6 +237,9 @@ group.add_option("", "--loner", dest="loner", action="store_true",
                  help="Search for 'lonely' packages, means not explicitly " \
                       "installed packages, which are not required by any " \
                       "other installed package")
+group.add_option("", "--filesystem", dest="filesystem", action="store_true",
+                 help="Search the entire filesystem for not package-managed " \
+                      "files")
 group.add_option("-F", "--files", dest="show_files", action="store_true",
                  help="List of all files in the given package")
 group.add_option("-o", "--owns", dest="owns", action="store_true",
@@ -218,6 +251,8 @@ group = OptionGroup(parser, "Remove Actions",
                     "-R activates the Remove Actions")
 group.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
+group.add_option("", "--no-recu", dest="no_recursive_remove", action="store_true",
+                  help="Do not recursivly remove unneeded dependencies on remove")
 parser.add_option_group(group)
 
 group = OptionGroup(parser, "Build Actions",
@@ -244,28 +279,28 @@ parser.add_option_group(group)
 (options, args) = parser.parse_args()
 
 events = MMacmanEvents()
-config = PyALPMMConfiguration(
-    events,
-    options.configfile,
-    cmd_args=options
-)
+config = PyALPMMConfiguration(events, options.configfile, cmd_args=options)
 
 # uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
-#events.logfile = config.logfile
+# events.logfile = config.logfile
 
 session = Session(config)
 
 # global exception catcher func callback
 def exc_cb(type_, val, trace):
+    if not issubclass(type_, CriticalError):
+        raise type_(val)
+
     print "[e] A {0} occured:".format(type_.__name__)
     print "[e] {0}".format(val)
+
 def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
     print "[e] {0}".format(frame)
     print "cannot cancel, wait till end"
+
 system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
 #system = System(session)
-
 
 if options.cpc:
     print "[i] evil option detected"
@@ -295,9 +330,25 @@ if options.build_no_cleanup:
           format(config)
 if options.build_no_prepare:
     print "[i]     Do not prepare PackageBuilder (--no-prepare)"
+if options.no_recursive_remove:
+    print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
+
 
 if options.update:
     system.update_databases()
+
+# check for all affected options, if there is at least one positional argument
+if len(args) == 0:
+    if (options.query and options.owns) or (options.query and options.info):
+        print "[e] you have to pass one argument to issue a query!"
+        sys.exit()
+    elif options.build:
+        print "[e] you have to pass the name of the package you want to build!"
+        sys.exit()
+    elif options.upgrade or options.remove or \
+         (options.sync and not options.sysupgrade):
+        print "[e] you have to pass at least one package name to process!"
+        sys.exit()
 
 if options.sync and options.search:
     result = system.search_packages(args[0])
@@ -332,21 +383,9 @@ elif options.query and options.info:
             print FancyPackage(pkg)
 
 elif options.query and options.loner:
-    db = session.db_man
     print "[+] Starting 'lonely' package search"
 
-    # first build a map of dependencies (keys)
-    dm = dependency_map = {}
-    for pkg in db.get_local_packages():
-        for dep in pkg.depends:
-            dm.setdefault(dep.name, []).append(pkg.name)
-    # now we just check, if there is a not required package which was not
-    # explicitly installed by the user
-    loners = set()
-    for pkg in db.get_local_packages():
-        if pkg.name not in dm and pkg.reason == p.PM_PKG_REASON_DEPEND:
-            loners.add(pkg)
-
+    loners = system.get_unneeded_packages()
     # showing loners
     if len(loners) == 0:
         print "[+] There were no loners found on your system!"
@@ -355,7 +394,38 @@ elif options.query and options.loner:
         for pkg in loners:
             print "[i] {0.name}-{0.version}".format(pkg)
 
-#elif options.query and options.
+elif options.query and options.filesystem:
+    db = session.db_man
+
+    # creating full file-map (could take some mem)
+    fm = file_map = {}
+    for pkg in db.get_local_packages():
+        for fn in pkg.files:
+            fm["/" + fn] = pkg
+
+    # checking filesystem against map
+    searchdirs = ["/usr", "/etc", "/var", "/boot", "/opt", "/bin", "/sbin", \
+                  "/lib"]
+    exclude = ["/usr/lib/python2.6"]
+    orphans = []
+
+    def callback(arg, path, content):
+        for fn in content:
+            fp = fullpath = os.path.join(path, fn)
+            if fp in exclude:
+                content.remove(fn)
+                continue
+            if os.path.isdir(fp):
+                continue
+            if fp not in fm:
+                orphans.append(fp)
+
+    for path in searchdirs:
+        os.path.walk("/usr", callback, None)
+
+    print "[+] Found {0} orphans:".format(len(orphans))
+    for orphan in orphans:
+        print "[i] {0}".format(orphan)
 
 elif options.query:
     db = session.db_man
@@ -367,14 +437,14 @@ elif options.query:
     for pkg in db.get_local_packages():
         counter += 1
         in_aur, manually_installed = 0, 0
-        if pkg.reason.raw == p.PM_PKG_REASON_EXPLICIT:
+        if pkg.reason == p.PM_PKG_REASON_EXPLICIT:
             manually_installed += 1
         if options.aur and not db.get_package(pkg.name, repos=config.repos):
             aur_pkgs.add(pkg)
 
         pkg_opts = "[{0}] [{1}]".format(
             ("x" if pkg in aur_pkgs else " "),
-            ("x" if pkg.reason.raw == p.PM_PKG_REASON_EXPLICIT else " ")
+            ("x" if pkg.reason == p.PM_PKG_REASON_EXPLICIT else " ")
         )
         print " {0} {1}-{2}".format(pkg_opts, pkg.name, pkg.version)
 
@@ -383,15 +453,15 @@ elif options.query:
     if options.aur:
         regularpkgs = counter - len(aur_pkgs)
         print "[i] {0} packages from 'regular' repositories".format(regularpkgs)
-        print "[i] {0} packages from AUR".format(len(aur_pkgs))
-        print "[i] Listing AUR packages now:"
+        print "[i] {0} packages from other repositories".format(len(aur_pkgs))
+        print "[i] Listing packages from third-party repositories now:"
         for pkg in aur_pkgs:
             print "  - {0.name}-{0.version}".format(pkg)
 
 elif options.upgrade:
     system.upgrade_packages(targets=args)
 elif options.remove:
-    system.remove_packages(targets=args)
+    system.remove_packages(targets=args, recursive=options.no_recursive_remove)
 elif options.build:
     system.build_packages(targets=args)
 elif options.sync and options.sysupgrade:
@@ -399,4 +469,5 @@ elif options.sync and options.sysupgrade:
 elif options.sync:
     system.sync_packages(targets=args)
 else:
-    parser.print_help()
+    if not options.update:
+        parser.print_help()
