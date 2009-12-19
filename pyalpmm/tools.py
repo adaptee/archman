@@ -141,6 +141,11 @@ class FancyOutput(object):
     def __len__(self):
         return len(self.out)
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.raw == self.raw
+        return self.raw == other
+
     __unicode__ = __repr__ = __str__ = lambda s: str(s.out)
 
 class FancySize(FancyOutput):

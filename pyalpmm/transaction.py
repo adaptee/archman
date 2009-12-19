@@ -261,17 +261,18 @@ class Transaction(object):
         """Handle specific error types, if errno is unknown - show errno and
         alpm_strerror
         """
+        err_msg = "ALPM error: {0} ({1})"
         if errno == p.PM_ERR_UNSATISFIED_DEPS:
             ml = MissList(p.get_list_from_ptr(self.__backend_data))
-            raise TransactionError("ALPM error: %s (%s)" % (
-                p.alpm_strerror(errno), errno), ml=ml)
+            raise TransactionError(
+                err_msg.format(p.alpm_strerror(errno), errno), ml=ml)
         elif errno == p.PM_ERR_FILE_CONFLICTS:
             cl = FileConflictList(p.get_list_from_ptr(self.__backend_data))
-            raise TransactionError("ALPM error: %s (%s)" % (
-                p.alpm_strerror(errno), errno), cl=cl)
+            raise TransactionError(
+                err_msg.format(p.alpm_strerror(errno), errno), cl=cl)
         else:
-            raise TransactionError("ALPM error: %s (%s)" % (
-                p.alpm_strerror(errno), errno))
+            raise TransactionError(
+                err_msg.format(p.alpm_strerror(errno), errno))
 
 class SyncTransaction(Transaction):
     """Sync the 'targets' with the system"""

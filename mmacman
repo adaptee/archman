@@ -344,16 +344,18 @@ elif options.query and options.loner:
     # explicitly installed by the user
     loners = set()
     for pkg in db.get_local_packages():
-        if pkg.name not in dm and pkg.reason == p.PM_PKG_REASON_EXPLICIT:
+        if pkg.name not in dm and pkg.reason == p.PM_PKG_REASON_DEPEND:
             loners.add(pkg)
 
-    print "[+] Search completed!"
+    # showing loners
     if len(loners) == 0:
         print "[+] There were no loners found on your system!"
     else:
         print "[+] I have found the following loners on your system:"
         for pkg in loners:
             print "[i] {0.name}-{0.version}".format(pkg)
+
+#elif options.query and options.
 
 elif options.query:
     db = session.db_man
@@ -394,5 +396,7 @@ elif options.build:
     system.build_packages(targets=args)
 elif options.sync and options.sysupgrade:
     system.sys_upgrade()
-else:
+elif options.sync:
     system.sync_packages(targets=args)
+else:
+    parser.print_help()
