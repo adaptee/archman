@@ -261,8 +261,8 @@ class System(object):
     def get_unneeded_packages(self):
         """Get all packages, which have not been installed explicitly and are
         not a dependency from some other package."""
-        return set(pkg for pkg in db.get_local_packages() \
-                   if system._is_package_unnedded(pkg.name))
+        return set(pkg for pkg in self.session.db_man.get_local_packages() \
+                   if self._is_package_unneeded(pkg.name))
 
     def search_packages(self, pkgname):
         """Search for a query/pkgname in the repositories. Behave like
