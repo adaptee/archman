@@ -35,7 +35,7 @@ class MMacmanEvents(Events):
         print "[i] Database up to date: {0}".format(kw["repo"])
 
     def DatabaseUpdated(self, **kw):
-        if self.line_dirty:
+        if self.line_dirty and self.progress_obj:
             self.line_dirty = False
             sys.stdout.write("\r{0}\n".format(self.progress_obj.step_to_end()))
             sys.stdout.flush()
@@ -121,7 +121,6 @@ class MMacmanEvents(Events):
         if self.progress_obj is None:
             self.active_pkg = "" if fn.endswith(".db.tar.gz") \
                 else PackageItem(None)
-        print "active: {0} last: {1}".format(self.active_pkg, self.last_pkg)
         self.last_pkg = self.active_pkg
 
         # PackageItem means package download
