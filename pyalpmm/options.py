@@ -211,7 +211,6 @@ class PyALPMMConfiguration(ConfigMapper):
     should be an instance of it around as attribute from a Session instance
     """
     # configuration options
-    holdpkgs = ListConfigItem("general")
     ignorepkgs = ListConfigItem("general")
     ignoregrps = ListConfigItem("general")
     noupgrades = ListConfigItem("general")
