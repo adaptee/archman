@@ -111,7 +111,7 @@ class ProgressBar(object):
 
         :param value: the now reached value
         """
-        time.sleep(0.01)
+        time.sleep(0.1)
         if self.endvalue:
             self.percent = min((value / (self.endvalue/100.)), 100)
             filled = int(math.ceil((self.bar_width/100.) * self.percent))
@@ -124,11 +124,8 @@ class ProgressBar(object):
         """Should be called before jumping to the next line in order to have a
         nice optical clean progressbar
         """
-        if self.endvalue:
-            self.percent = 100
-
+        self.percent = 100
         filled = self.bar_width
-
         return self._get_bar(filled)
 
     @property
@@ -270,5 +267,5 @@ class CriticalError(Exception):
             arg.format(*v, **kw) for arg in self.args if isinstance(arg, str)
         )
 
-class UserError(BaseException):
+class UserError(Exception):
     pass

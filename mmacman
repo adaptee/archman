@@ -31,15 +31,18 @@ class MMacmanEvents(Events):
         self.line_dirty = False
         self.last_total_download = None
 
+    def _clean_line(self, cleanup_text="\n"):
+        if self.line_dirty:
+            sys.stdout.write(cleanup_text)
+            sys.stdout.flush()
+            self.line_dirty = False
+
     def DatabaseUpToDate(self, **kw):
         print "[i] Database up to date: {0}".format(kw["repo"])
 
     def DatabaseUpdated(self, **kw):
-        if self.line_dirty and self.progress_obj:
-            self.line_dirty = False
-            sys.stdout.write("\r{0}\n".format(self.progress_obj.step_to_end()))
-            sys.stdout.flush()
-
+        if self.progress_obj:
+            self._clean_line("\r{0}\n".format(self.progress_obj.step_to_end()))
         print "[+] Database updated: {0}".format(kw["repo"])
 
     def DatabaseUpdateError(self, **kw):
@@ -52,48 +55,35 @@ class MMacmanEvents(Events):
         print "[i] Checking Inter-Conflicts..."
 
     def StartRetrievingPackages(self, **kw):
+        self._clean_line()
         print "[+] Retrieving from {0}".format(kw["repo"])
 
     def StartUpgradingPackage(self, **kw):
-        if self.line_dirty:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            self.line_dirty = False
+        self._clean_line()
         self.progress_obj = None
         self.active_pkg = kw["pkg"]
 
     def StartRemovingPackage(self, **kw):
-        if self.line_dirty:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            self.line_dirty = False
+        self._clean_line()
         self.progress_obj = None
         self.active_pkg = kw["pkg"]
 
     def StartInstallingPackage(self, **kw):
-        if self.line_dirty:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            self.line_dirty = False
+        self._clean_line()
         self.progress_obj = None
         self.active_pkg = kw["pkg"]
 
     def DoneInstallingPackage(self, **kw):
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        self._clean_line()
 
     def DoneRemovingPackage(self, **kw):
-        # pkg
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        self._clean_line()
 
     def DoneUpgradingPackage(self, **kw):
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        self._clean_line()
 
     def StartCheckingPackageIntegrity(self):
-        sys.stdout.write("[+] Checking package integrity...\r\n")
-        sys.stdout.flush()
+        self._clean_line()
 
     def StartCheckingFileConflicts(self):
         self.progress_obj = None
@@ -115,49 +105,41 @@ class MMacmanEvents(Events):
 
         self.line_dirty = True
 
-    def ProgressDownload(self, **kw):
+    def StartNewDownload(self, **kw):
         fn = filename = kw["filename"]
 
-        if self.progress_obj is None:
-            self.active_pkg = "" if fn.endswith(".db.tar.gz") \
-                else PackageItem(None)
-        self.last_pkg = self.active_pkg
+        self._clean_line()
 
-        # PackageItem means package download
-        if isinstance(self.active_pkg, PackageItem):
+        self.active_pkg = None
+        # first catch db-info downloads
+        if fn.endswith(".db.tar.gz"):
+            self.active_pkg = fn
+            size = None
+            label = "[D] {0}".format(fn)
+        # here a package is downloaded
+        else:
             for name, pkg in self.processed_pkgs.items():
                 if fn.find(name) == 0:
                     self.active_pkg = pkg
             size = int(pkg.size.raw)
             label = "[D] {0.name}-{0.version}".format(self.active_pkg)
-        # str means database file download
-        elif isinstance(self.active_pkg, str):
-            self.active_pkg = fn
-            size = None
-            label = "[D] {0}".format(fn)
+            assert self.active_pkg is not None
 
-        if self.progress_obj is None:
-            self.progress_obj = ProgressBar(size, label)
+        self.progress_obj = ProgressBar(size, label)
 
+    def ProgressDownload(self, **kw):
         sys.stdout.write((self.progress_obj.step_to(kw["transfered"]) \
                           if self.progress_obj.endvalue \
-                          else self.progress_obj.step_to(7)) + "\r")
+                          else self.progress_obj.step_to(10)) + "\r")
         sys.stdout.flush()
 
         self.line_dirty = True
-        if (self.progress_obj is not None and \
-            self.progress_obj.percent == 100) or \
-           self.active_pkg != self.last_pkg:
-            self.progress_obj = None
-            sys.stdout.write("\n")
-            sys.stdout.flush()
 
     def ProgressDownloadTotal(self, **kw):
         if self.last_total_download is None:
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-        #self.progress_obj = None
         self.processed_pkgs = dict((p.name, p) for p in kw["pkgs"])
 
     def ProgressInstall(self, **kw):
@@ -287,10 +269,11 @@ session = Session(config)
 
 # global exception catcher func callback
 def exc_cb(type_, val, trace):
-    if not issubclass(type_, CriticalError):
+    if not issubclass(type_, (CriticalError, UserError)):
         raise type_(val)
 
-    print "[e] A {0} occured:".format(type_.__name__)
+    if issubclass(type_, CriticalError):
+        print "[e] A {0} occured:".format(type_.__name__)
     print "[e] {0}".format(val)
 
 def sig_cb(signal, frame):
@@ -460,7 +443,7 @@ elif options.query:
 elif options.upgrade:
     system.upgrade_packages(targets=args)
 elif options.remove:
-    system.remove_packages(targets=args, recursive=options.no_recursive_remove)
+    system.remove_packages(targets=args, recursive=not options.no_recursive_remove)
 elif options.build:
     system.build_packages(targets=args)
 elif options.sync and options.sysupgrade:

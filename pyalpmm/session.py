@@ -149,20 +149,22 @@ class System(object):
             return loc_pkg
         return False
 
-    def _is_package_unneeded(self, pkgname):
+    def _is_package_unneeded(self, pkgname, exclude_packages=None):
         """Decide wheather a given package is not needed anymore. A package is
         not needed anymore, if it wasn't explicitly installed and if it isn't
         needed as a dependency
 
         :param pkgname: name of the package as a string
         """
+        exclude_packages = set(exclude_packages or set())
         pkg = self.session.db_man.get_local_package(pkgname)
         if pkg is None:
-            #print "[-] The package: {0} is not installed".format(pkgname)
             return True
 
         return pkg.reason == p.PM_PKG_REASON_DEPEND and \
-               pkgname not in self.dependency_map
+               (pkgname not in self.dependency_map or
+                len(set(self.dependency_map[pkgname]) - exclude_packages) == 0)
+
 
     def _init_global_exception_handler(self, callback):
         def exceptionhooker(exception_type, exception_value, traceback_obj):
@@ -199,19 +201,21 @@ class System(object):
         dep_targets = set()
         while len(deps) > 0:
             dep = deps.pop()
-            if self._is_package_unneeded(dep):
+            if self._is_package_unneeded(dep, targets):
                 pkg = db.get_local_package(dep)
 
                 if not pkg:
                     print "[-] The dependency: {0} is not installed".format(dep)
                     continue
 
-                dep_targets.add(d.name for d in pkg.depends)
+                deps |= set([d.name for d in pkg.depends])
+                dep_targets.add(dep)
 
                 print ("[+] added package: {0} to targets, " \
                        "isn't needed anymore").format(dep)
 
-        self._handle_transaction(RemoveTransaction, targets=targets)
+        all_targets = targets + list(dep_targets)
+        self._handle_transaction(RemoveTransaction, targets=all_targets)
 
     def upgrade_packages(self, targets):
         """Upgrade the given targets from given path/files

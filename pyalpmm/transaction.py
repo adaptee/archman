@@ -126,6 +126,8 @@ class Transaction(object):
 
     # those 5 methods wrap the Transaction events to the Events instance
     def __callback_download_progress(self, fn, transfered, filecount):
+        if transfered == 0:
+            self.events.StartNewDownload(filename=fn)
         self.events.ProgressDownload(
             filename=fn, transfered=transfered, filecount=filecount
         )

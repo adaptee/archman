@@ -60,6 +60,7 @@ class Events(object):
              # options
              "DoneReadingConfigFile",             # ()
              # progress handling
+             "StartNewDownload",                  # (filename: str)
              "ProgressDownload",                  # (transfered, filecount: int, filename: str)
              "ProgressDownloadTotal",             # (total: int, pkgs: list of PackageItem)
              "ProgressInstall",                   # (pkgname: str, percent: int)
