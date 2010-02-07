@@ -5,8 +5,7 @@ pkgdesc="The Python ALPM high-level API"
 arch=('i686' 'x86_64')
 license=('GPL')
 url="http://www.infolexikon.de/code/pyalpmm"
-depends=('python>=2.6.1' 'pacman-mirrorlist')
-makedepends=('swig')
+depends=('python>=2.6.1' 'pacman-mirrorlist' 'swig')
 conflicts=('pyalpmm')
 
 _svntrunk=svn://infolexikon.de/pyalpmm/trunk
@@ -14,7 +13,7 @@ _svnmod=pyalpmm
 
 build() {
 	cd ${srcdir}/
-	
+
 	svn co $_svntrunk $_svnmod
 
 	msg "SVN checkout done or server timeout"

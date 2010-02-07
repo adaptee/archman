@@ -241,9 +241,6 @@ group.add_option("", "--loner", dest="loner", action="store_true",
                  help="Search for 'lonely' packages, means not explicitly " \
                       "installed packages, which are not required by any " \
                       "other installed package")
-#group.add_option("", "--filesystem", dest="filesystem", action="store_true",
-#                 help="Search the entire filesystem for not package-managed " \
-#                      "files")
 group.add_option("-F", "--files", dest="show_files", action="store_true",
                  help="List of all files in the given package")
 group.add_option("-o", "--owns", dest="owns", action="store_true",
@@ -338,7 +335,6 @@ if options.build_no_prepare:
 if options.no_recursive_remove:
     print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
 
-
 if options.update:
     system.update_databases()
 
@@ -397,74 +393,60 @@ elif options.query and options.loner:
     else:
         print "[+] I have found the following loners on your system:"
         for pkg in loners:
-            print "[i] {0.name}-{0.version}".format(pkg)
-
-
-# Kinda useless, but the idea was nice...
-#elif options.query and options.filesystem:
-    #db = session.db_man
-
-    ## creating full file-map (could take some mem)
-    #fm = file_map = {}
-    #for pkg in db.get_local_packages():
-        #for fn in pkg.files:
-            #fm["/" + fn] = pkg
-
-    ## checking filesystem against map
-    #searchdirs = ["/usr", "/etc", "/var", "/boot", "/opt", "/bin", "/sbin", \
-                  #"/lib"]
-    #exclude = ["/usr/lib/python2.6"]
-    #orphans = []
-
-    #def callback(arg, path, content):
-        #for fn in content:
-            #fp = fullpath = os.path.join(path, fn)
-            #if fp in exclude:
-                #content.remove(fn)
-                #continue
-            #if os.path.isdir(fp):
-                #continue
-            #if fp not in fm:
-                #orphans.append(fp)
-
-    #for path in searchdirs:
-        #os.path.walk("/usr", callback, None)
-
-    #print "[+] Found {0} orphans:".format(len(orphans))
-    #for orphan in orphans:
-        #print "[i] {0}".format(orphan)
+            print "    [i] {0.name}-{0.version}".format(pkg)
 
 elif options.query:
     db = session.db_man
     print "[+] Listing all installed packages: "
-    print "[h] (left [X] stands for AUR, the right one for beeing " \
-          "explicitly installed)"
+
     counter, manually_installed = 0, 0
     aur_pkgs = set()
+
+    headers = ("AUR", "EXPLICIT", "PACKAGE")
+    headers2 = ("PACKAGE", "INSTALL", "NAME and VERSION")
+    if options.aur:
+        print " {0[0]:<9}| {0[1]:<10}| {0[2]:<20}".format(headers)
+        print " {0[0]:<9}| {0[1]:<10}| {0[2]:<20}".format(headers2)
+        print ("-"*10) + "+" + ("-"*10) + "+" + ("-"*20)
+    else:
+        print " {0[1]:<9}| {0[2]:<20}".format(headers)
+        print " {0[1]:<9}| {0[2]:<20}".format(headers2)
+        print ("-"*10) + "+" + ("-"*20)
+
     for pkg in db.get_local_packages():
         counter += 1
-        in_aur, manually_installed = 0, 0
         if pkg.reason == p.PM_PKG_REASON_EXPLICIT:
             manually_installed += 1
+        reason_sign = "-x-" if pkg.reason == p.PM_PKG_REASON_EXPLICIT else ""
 
-        if config.aur_support and not db.get_package(pkg.name, repos=config.repos):
-            aur_pkgs.add(pkg)
+        if options.aur:
+            if not db.get_package(pkg.name, repos=config.repos):
+                aur_pkgs.add(pkg)
+                aur_sign = "-x-"
+            else:
+                aur_sign = ""
+            print "{0:^10}|{1:^10}| {2.name} {2.version}". \
+                  format(aur_sign, reason_sign, pkg)
+        else:
+            print "{0:^10}| {1.name} {1.version}". \
+                  format(reason_sign, pkg)
 
-        pkg_opts = "[{0}] [{1}]".format(
-            ("x" if pkg in aur_pkgs else " "),
-            ("x" if pkg.reason == p.PM_PKG_REASON_EXPLICIT else " ")
-        )
-        print " {0} {1}-{2}".format(pkg_opts, pkg.name, pkg.version)
-
+    print ("-"*10) + "+" + ("-"*10) + "+" + ("-"*20) if options.aur \
+          else ("-"*10) + "+" + ("-"*20)
 
     print "[i] {0} packages installed!".format(counter)
+    print "[i] {0} packages were installed explicitly".\
+          format(manually_installed)
+
     if options.aur:
         regularpkgs = counter - len(aur_pkgs)
-        print "[i] {0} packages from 'regular' repositories".format(regularpkgs)
-        print "[i] {0} packages from other repositories".format(len(aur_pkgs))
-        print "[i] Listing packages from third-party repositories now:"
+        print "[i] {0} packages from 'regular' repositories".\
+              format(regularpkgs)
+        print "[i] {0} packages from other repositories (AUR)".\
+              format(len(aur_pkgs))
+        print "[+] Listing packages from third-party repositories now:"
         for pkg in aur_pkgs:
-            print "  - {0.name}-{0.version}".format(pkg)
+            print "    [i] {0.name}-{0.version}".format(pkg)
 
 elif options.upgrade:
     system.upgrade_packages(targets=args)
