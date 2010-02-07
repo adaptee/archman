@@ -21,7 +21,6 @@ import pyalpmm_raw as p
 #import wingdbstub
 
 class MMacmanEvents(Events):
-    progressbar_sleep = property(lambda s: 1/float(randint(5,20)))
     def __init__(self):
         super(MMacmanEvents, self).__init__()
         self.progress_obj = None
@@ -252,8 +251,9 @@ group = OptionGroup(parser, "Remove Actions",
                     "-R activates the Remove Actions")
 group.add_option("-R", "--remove", dest="remove", action="store_true",
                   help="Remove the given packages from the system")
-group.add_option("", "--no-recu", dest="no_recursive_remove", action="store_true",
-                  help="Do not recursivly remove unneeded dependencies on remove")
+group.add_option("", "--no-recu", dest="recursive_remove",
+                 default="True", action="store_false",
+                help="Do not recursivly remove unneeded dependencies on remove")
 parser.add_option_group(group)
 
 group = OptionGroup(parser, "Build Actions",
@@ -269,7 +269,6 @@ group.add_option("", "--no-cleanup", dest="build_no_cleanup", action="store_true
 group.add_option("", "--no-prepare", dest="build_no_prepare", action="store_true",
                   help="Don't prepare (download scripts and sources) the build")
 parser.add_option_group(group)
-
 
 group = OptionGroup(parser, "Evil Options",
                     "only --args are used in the evil opts")
@@ -332,7 +331,7 @@ if options.build_no_cleanup:
           format(config)
 if options.build_no_prepare:
     print "[i]     Do not prepare PackageBuilder (--no-prepare)"
-if options.no_recursive_remove:
+if not options.recursive_remove:
     print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
 
 if options.update:
@@ -451,7 +450,7 @@ elif options.query:
 elif options.upgrade:
     system.upgrade_packages(targets=args)
 elif options.remove:
-    system.remove_packages(targets=args, recursive=not options.no_recursive_remove)
+    system.remove_packages(targets=args, recursive=options.recursive_remove)
 elif options.build:
     system.build_packages(targets=args)
 elif options.sync and options.sysupgrade:

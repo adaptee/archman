@@ -188,34 +188,39 @@ class System(object):
         """
         db = self.session.db_man
 
-        # collect dependencies of the target packages
-        deps = set()
-        for pkgname in targets:
-            pkg = db.get_local_package(pkgname)
-            if pkg is None:
-                continue
-            deps.update(dep.name for dep in pkg.depends)
-        # delete dependencies, which are already inside targets
-        deps -= set(targets)
-
-        # resolving dependencies and deciding if we delete dependency
-        dep_targets = set()
-        while len(deps) > 0:
-            dep = deps.pop()
-            if self._is_package_unneeded(dep, targets):
-                pkg = db.get_local_package(dep)
-
-                if not pkg:
-                    print "[-] The dependency: {0} is not installed".format(dep)
+        if recursive:
+            # collect dependencies of the target packages
+            deps = set()
+            for pkgname in targets:
+                pkg = db.get_local_package(pkgname)
+                if pkg is None:
                     continue
+                deps.update(dep.name for dep in pkg.depends)
+            # delete dependencies, which are already inside targets
+            deps -= set(targets)
 
-                deps |= set([d.name for d in pkg.depends])
-                dep_targets.add(dep)
+            # resolving dependencies and deciding if we delete dependency
+            dep_targets = set()
+            while len(deps) > 0:
+                dep = deps.pop()
+                if self._is_package_unneeded(dep, targets):
+                    pkg = db.get_local_package(dep)
 
-                print ("[+] added package: {0} to targets, " \
-                       "isn't needed anymore").format(dep)
+                    if not pkg:
+                        print "[-] The dependency: {0} is not installed".\
+                              format(dep)
+                        continue
 
-        all_targets = targets + list(dep_targets)
+                    deps |= set([d.name for d in pkg.depends])
+                    dep_targets.add(dep)
+
+                    print ("[+] added package: {0} to targets, " \
+                           "isn't needed anymore").format(dep)
+
+            all_targets = targets + list(dep_targets)
+        else:
+            all_targets = targets
+
         self._handle_transaction(RemoveTransaction, targets=all_targets)
 
     def upgrade_packages(self, targets):
