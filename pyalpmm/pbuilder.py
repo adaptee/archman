@@ -104,36 +104,31 @@ class PackageBuilder(object):
             raise BuildError("Could not change directory to: {0}".\
                              format(self.path))
 
-        makepkg = "makepkg {0}".format(
-            "> /dev/null 2>&1" if c.build_quiet else ""
-        )
+        print c.force
+        makepkg = "makepkg {1} {0}".format(
+            "> /dev/null 2>&1" if c.build_quiet else "",
+            "-f" if c.force else ""
+        ).strip()
 
         # if run as root, setuid to other user
         if os.getuid() == 0:
             os.chown(self.path, c.build_uid, c.build_gid)
-
             recv, send = os.pipe()
             pid = os.fork()
             if pid == 0:
                 os.setuid(c.build_uid)
-                ret = call(makepkg.split(" "))
-                os.write(send, str(ret))
-                if ret != 0:
-                    print "[e] makepkg threw an error: {0}".format(ret)
-                print "[i] exiting build-process"
+                ret = str(call(makepkg.split(" ")))
+                os.write(send, ret)
             else:
                 ret = os.read(recv, 1024)
                 os.kill(pid, signal.SIGKILL)
 
-                if ret != 0:
-                    print ("[e] The build failed with the makepkg "
+                if ret != "0":
+                    raise BuildError("[e] The build failed with the makepkg "
                            "returncode: {0}").format(ret)
-                    print "[!] exiting..."
-                    sys.exit()
         else:
-            if not os.system(makepkg) == 0:
-                raise BuildError("The build was not successful, "
-                                 "could not change user-uid - you are not root")
+            raise BuildError("[e] you are not root!")
+
         self.events.DoneBuild()
 
         # kinda ugly

@@ -259,15 +259,17 @@ parser.add_option_group(group)
 group = OptionGroup(parser, "Build Actions",
                     "-B activates the Build Actions")
 group.add_option("-B", "--build", dest="build", action="store_true",
-                  help="Build the given packages either from abs or from aur")
+                 help="Build the given packages either from abs or from aur")
 group.add_option("-I", "--install", dest="build_install", action="store_true",
-                  help="Install the built package")
+                 help="Install the built package")
 group.add_option("-e", "--edit", dest="build_edit", action="store_true",
-                  help="Edit the PKGBUILD before building")
-group.add_option("", "--no-cleanup", dest="build_no_cleanup", action="store_true",
-                  help="Don't cleanup (delete) the build dir before")
-group.add_option("", "--no-prepare", dest="build_no_prepare", action="store_true",
-                  help="Don't prepare (download scripts and sources) the build")
+                 help="Edit the PKGBUILD before building")
+group.add_option("", "--no-cleanup", dest="build_cleanup", action="store_false",
+                 default="True",
+                 help="Don't cleanup (delete) the build dir before")
+group.add_option("", "--no-prepare", dest="build_prepare", action="store_false",
+                 default="True",
+                 help="Don't prepare (download scripts and sources) the build")
 parser.add_option_group(group)
 
 group = OptionGroup(parser, "Evil Options",
@@ -288,12 +290,13 @@ session = Session(config)
 
 # global exception catcher func callback
 def exc_cb(type_, val, trace):
-    if not issubclass(type_, (CriticalError, UserError)):
-        raise type_(val)
+    #if not issubclass(type_, (CriticalError, UserError)):
+    #    raise type_(val)
+    raise type_(val)
+    #if issubclass(type_, CriticalError):
+    #    print "[e] A {0} occured:".format(type_.__name__)
 
-    if issubclass(type_, CriticalError):
-        print "[e] A {0} occured:".format(type_.__name__)
-    print "[e] {0}".format(val)
+    #print "[e] {0}".format(val)
 
 def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
@@ -326,10 +329,10 @@ if options.build_install:
     print "[i]     Installing the freshly built package (-I)"
 if options.build_edit:
     print "[i]     Edit the PKGBUILD before makepkg (-e)"
-if options.build_no_cleanup:
+if not options.build_cleanup:
     print "[i]     Don't cleanup build {0.build_dir} (--no-cleanup)". \
           format(config)
-if options.build_no_prepare:
+if not options.build_prepare:
     print "[i]     Do not prepare PackageBuilder (--no-prepare)"
 if not options.recursive_remove:
     print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"

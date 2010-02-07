@@ -341,16 +341,12 @@ class AURTransaction(UpgradeTransaction):
             )
 
         p = PackageBuilder(self.session, pkg)
-
         if self.session.config.build_edit:
             p.edit()
-
-        if not self.session.config.build_no_cleanup:
+        if self.session.config.build_cleanup:
             p.cleanup()
-
-        if not self.session.config.build_no_prepare:
+        if self.session.config.build_prepare:
             p.prepare()
-
         p.build()
 
         if self.session.config.build_install:
