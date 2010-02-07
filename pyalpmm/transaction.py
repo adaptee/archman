@@ -20,6 +20,9 @@ with SyncTransaction(session, ["xterm"]) as transobj:
 Obviously you can only start a transaction if you are root.
 """
 
+#  int alpm_trans_interrupt(void); INTERRUPT FOR TRANSACTION FOR SIGNALS
+
+
 import os, sys
 
 import pyalpmm_raw as p
@@ -44,6 +47,7 @@ class TransactionError(CriticalError):
                     item.target, item.dep.name
                 )
         elif cl:
+            #p.alpm_conflict_get_reason(conflict)
             self.conflictlist = cl
             for item in cl:
                 if item.type == p.PM_FILECONFLICT_TARGET:
@@ -81,9 +85,11 @@ class Transaction(object):
         p.alpm_option_set_dlcb(self.__callback_download_progress)
         p.alpm_option_set_totaldlcb(self.__callback_download_total_progress)
 
+        # this one to set alernative downloader
+        #p.alpm_cb_fetch(const char *url, const char *localpath, int force)
+
         # init transaction, including the rest of the callbacks
         if p.alpm_trans_init(
-            self.trans_type,
             self.session.config.transaction_flags,
             self.__callback_event,
             self.__callback_conv,
@@ -109,13 +115,14 @@ class Transaction(object):
         Use helper functions in C (pyalpmm_raw/helper.i) to construct a
         alpm_list_t in C space on which the transaction can work on.
         """
-
         self.__backend_data = p.get_list_buffer_ptr()
         if p.alpm_trans_prepare(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
 
-        if len(self.get_targets()) == 0:
+        self.targets = self.get_targets()
+        if len(self.targets["remove"]) + len(self.targets["add"]) == 0:
             raise TransactionError("Nothing to be done...")
+
         self.events.DoneTransactionPrepare()
 
     def __enter__(self):
@@ -132,7 +139,7 @@ class Transaction(object):
             filename=fn, transfered=transfered, filecount=filecount
         )
     def __callback_download_total_progress(self, total):
-        self.events.ProgressDownloadTotal(total=total, pkgs=self.get_targets())
+        self.events.ProgressDownloadTotal(total=total, pkgs=self.get_targets()["add"])
     def __callback_event(self, event, data1, data2):
         if event == p.PM_TRANS_EVT_CHECKDEPS_START:
             self.events.StartCheckingDependencies()
@@ -183,6 +190,7 @@ class Transaction(object):
             return self.events.AskRemoveCorruptedPackage(pkg=data1)
         else:
             return 0
+
     def __callback_progress(self, event, pkgname, perc, count, remain):
         if event == p.PM_TRANS_PROGRESS_ADD_START:
             self.events.ProgressInstall(
@@ -202,28 +210,35 @@ class Transaction(object):
         p.alpm_trans_release()
         self.events.DoneTransactionDestroy()
 
-    def add_target(self, pkg_name):
-        """Add the pkg represented by 'pkg_name' to the transaction"""
-        if p.alpm_trans_addtarget(pkg_name) == -1:
-            if p.get_errno() == p.PM_ERR_PKG_NOT_FOUND:
-                raise TransactionError(
-                    "The target: %s could not be found" % pkg_name)
-            raise TransactionError(
-                "The target: %s could not be added" % pkg_name)
+    def get_targets(self):
+        # This here could be one point where we create PackageLists without
+        # the repo attribute set to each package / I'm afraid there is no way
+        # to solve this
+        return {
+            "remove": PackageList(p.alpm_trans_get_remove()),
+            "add": PackageList(p.alpm_trans_get_add())
+        }
 
     def set_targets(self, tars):
         """Add several targets taken from the list 'tars' to the transaction"""
-        out, grps_toinstall, toinstall = [], [], []
+        out, grps_toinstall, toinstall = [], set(), []
         db_man = self.session.db_man
 
+        if self.trans_type == "sync":
+            grps = db_man.get_sync_groups()
+        elif self.trans_type == "local":
+            grps = db_man.get_local_groups()
+        else:
+            grps = []
+
         for t in tars:
-            if t in (g.name for g in self.grp_search_list):
-                # do we need this, could we just add the group as target?
-                grp = db_man.get_group(t)
-                for pkg in grp.pkgs:
-                    self.add_target(pkg.name)
-                    toinstall += [pkg.name]
-                grps_toinstall += [grp]
+            if t in (g.name for g in grps):
+                grps = db_man.get_group(t, self.session.config.repos)
+                for grp in grps:
+                    for pkg in grp.pkgs:
+                        self.add_target(pkg.name)
+                        toinstall += [pkg.name]
+                    grps_toinstall.add(grp.name)
             else:
                 try:
                     self.add_target(t)
@@ -241,17 +256,11 @@ class Transaction(object):
         self.targets = (toinstall, grps_toinstall)
         self.events.DoneSettingTargets(targets=self.targets)
 
-    def get_targets(self):
-        """Get targets included in this transaction as a PackageList,
-        this is populated after .aquire() was called.
-        """
-        return PackageList(p.alpm_trans_get_pkgs())
-
     def commit(self):
         """Commit this transaction and let libalpm apply the changes to the
         filesystem and the databases
         """
-        if len(self.get_targets()) == 0:
+        if len(self.targets["add"]) + len(self.targets["remove"]) == 0:
             raise TransactionError("Nothing to be done...")
 
         if p.alpm_trans_commit(self.__backend_data) == -1:
@@ -272,20 +281,29 @@ class Transaction(object):
             cl = FileConflictList(p.get_list_from_ptr(self.__backend_data))
             raise TransactionError(
                 err_msg.format(p.alpm_strerror(errno), errno), cl=cl)
+        elif errno == p.PM_ERR_PKG_NOT_FOUND:
+            raise TransactionError("Not all targets could be added, which?")
         else:
             raise TransactionError(
                 err_msg.format(p.alpm_strerror(errno), errno))
 
 class SyncTransaction(Transaction):
     """Sync the 'targets' with the system"""
-    trans_type = p.PM_TRANS_TYPE_SYNC
+    trans_type = "sync"
 
-    def get_targets(self):
-        return PackageList(p.alpm_trans_get_pkgs())
+    def add_target(self, target):
+        if "/" in target:
+            pos = target.find("/")
+            ret = p.alpm_sync_dbtarget(target[:pos], target[pos+1:])
+        else:
+            ret = p.alpm_sync_target(target)
+
+        if ret == -1:
+            self.handle_error(p.get_errno())
 
 class RemoveTransaction(Transaction):
     """Remove the given 'targets' from the system"""
-    trans_type = p.PM_TRANS_TYPE_REMOVE
+    trans_type = "remove"
 
     def __init__(self, session, targets=None):
         super(RemoveTransaction, self).__init__(session, targets=targets)
@@ -293,15 +311,27 @@ class RemoveTransaction(Transaction):
         self.pkg_search_list = self.session.db_man["local"].get_packages()
         self.grp_search_list = self.session.db_man["local"].get_groups()
 
+    def add_target(self, target):
+        ret = p.alpm_remove_target(target)
+
+        if ret == -1:
+            self.handle_error(p.get_errno())
+
 class UpgradeTransaction(Transaction):
-    """Upgrade the given targets on the system and update local AUR database,
-    if the upgraded package is in AUR
-    """
-    trans_type = p.PM_TRANS_TYPE_UPGRADE
+    """Upgrade the given targets on the system"""
+    trans_type = "upgrade"
+
+    def add_target(self, target):
+        ret = p.alpm_add_target(target)
+
+        if ret == -1:
+            self.handle_error(p.get_errno())
 
 class AURTransaction(UpgradeTransaction):
     """The AURTransaction handles all the building, installing of a AUR package
     """
+    trans_type = "aur"
+
     def add_target(self, pkgname):
         pkg = self.session.db_man.get_sync_package(pkgname)
         if pkg is None:
@@ -326,18 +356,11 @@ class AURTransaction(UpgradeTransaction):
         if self.session.config.build_install:
             super(AURTransaction, self).add_target(p.pkgfile_path)
 
-class RemoveUpgradeTransaction(Transaction):
-    """Didn't get behind this one though, maybe to "securely" remove and directly
-    upgrade another package without the risk?! dunno
-    """
-    trans_type = p.PM_TRANS_TYPE_REMOVEUPGRADE
-
 class SysUpgradeTransaction(SyncTransaction):
     """The SysUpgradeTransaction upgrades the whole system with the latest
     available packages.
     """
-    def __init__(self, session):
-        super(SysUpgradeTransaction, self).__init__(session)
+    trans_type = "sysupgrade"
 
     def aquire(self):
         """As we have no targets here, we can prepare() after aquire()"""
@@ -348,12 +371,14 @@ class SysUpgradeTransaction(SyncTransaction):
         """For preparation there is a special C function, which we use to
         get the needed targets into the transaction
         """
-        if p.alpm_trans_sysupgrade(self.session.config.allow_downgrade) == -1:
-            raise TransactionError("The SystemUpgrade failed")
+        if p.alpm_sync_sysupgrade(self.session.config.allow_downgrade) == -1:
+            self.handle_error(p.get_errno())
         super(SysUpgradeTransaction, self).prepare()
 
 class DatabaseUpdateTransaction(SyncTransaction):
     """Update all (or just the passed) databases"""
+    trans_type = "update"
+
     def __init__(self, session, dbs=None):
         super(DatabaseUpdateTransaction, self).__init__(session)
         self.target_dbs = dbs
@@ -364,7 +389,7 @@ class DatabaseUpdateTransaction(SyncTransaction):
 
     def commit(self):
         """The actual work is given to the *Database instances, they have to
-        implement the updating by thereselves.
+        implement the updating by themselves.
         """
         dbs, sess = self.target_dbs, self.session
         if not dbs:
@@ -375,4 +400,5 @@ class DatabaseUpdateTransaction(SyncTransaction):
             o = sess.db_man.update_dbs(repos=[dbs], force=sess.config.force)
         else:
             raise TypeError(("The passed databases must be either a list of "
-                             "strings or only one string, not: %s") % dbs)
+                             "strings or only one string, not: {0}").
+                            format(dbs))

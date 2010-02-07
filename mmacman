@@ -83,7 +83,7 @@ class MMacmanEvents(Events):
         self._clean_line()
 
     def StartCheckingPackageIntegrity(self):
-        self._clean_line()
+        print "[i] Checking package integrity..."
 
     def StartCheckingFileConflicts(self):
         self.progress_obj = None
@@ -155,20 +155,43 @@ class MMacmanEvents(Events):
         self._progress("Checking File Conflicts:", kw)
 
     def ProcessingPackages(self, **kw):
-        total = 0
-        print "[i] Processing Packages:"
-        for pkg in kw["pkgs"]:
-            total += pkg.isize.raw
-            show_size = ("{0.size}" if pkg.isize == pkg.size else \
-                         "{0.size} / {0.isize}").format(pkg)
-            name = "    {0.name}-{0.version}".format(pkg)
-            print "{0:30}{1}".format(name, show_size)
+        isize, size, rsize = 0, 0, 0
 
         print
-        print "[i]    Total size: {0}".format(FancySize(total))
+        for which in ["remove", "add"]:
+            if kw[which] is None or len(kw[which]) == 0:
+                continue
+
+            print {"remove": "[i] Removing the following packages:",
+                   "add": "[i] Adding/Upgrading the following packages:"}[which]
+            dashes = "-"*63
+            print "+" + dashes + "+"
+            for pkg in kw[which]:
+                isize_obj = pkg.isize.rebuild(force_suffix="MB")
+                size_obj = pkg.size.rebuild(force_suffix="MB")
+                if which == "add":
+                    isize += isize_obj.raw
+                    size += size_obj.raw
+                    show_size = "{0:>9} | {1:>9}".format(size_obj, isize_obj)
+                else:
+                    rsize += pkg.size.raw
+                    show_size = "{0:>9}".format(size_obj)
+
+                name = "| {0.name}-{0.version}".format(pkg)
+                print "{0:40}{1:>23} |".format(name, show_size)
+            print "+" + dashes + "+"
+
+        if kw["add"] is not None and len(kw["add"]) != 0:
+            print "[i] {0:38}{1:>9} | {2:>9}". \
+                  format("Total download | install size:",
+                         FancySize(size), FancySize(isize))
+
+        if kw["remove"] is not None and len(kw["remove"]) != 0:
+            print "[i] Total diskspace released:{0:>34}". \
+                  format(FancySize(rsize))
+
         if AskUser("[?] Really continue (y/n)? ").answer == "n":
-            print "[e] ok, stopping operation"
-            raise UserError("User aborted operation!")
+            raise UserError("User aborted/declined operation!")
 
 
 parser = OptionParser()
@@ -218,9 +241,9 @@ group.add_option("", "--loner", dest="loner", action="store_true",
                  help="Search for 'lonely' packages, means not explicitly " \
                       "installed packages, which are not required by any " \
                       "other installed package")
-group.add_option("", "--filesystem", dest="filesystem", action="store_true",
-                 help="Search the entire filesystem for not package-managed " \
-                      "files")
+#group.add_option("", "--filesystem", dest="filesystem", action="store_true",
+#                 help="Search the entire filesystem for not package-managed " \
+#                      "files")
 group.add_option("-F", "--files", dest="show_files", action="store_true",
                  help="List of all files in the given package")
 group.add_option("-o", "--owns", dest="owns", action="store_true",
@@ -376,38 +399,40 @@ elif options.query and options.loner:
         for pkg in loners:
             print "[i] {0.name}-{0.version}".format(pkg)
 
-elif options.query and options.filesystem:
-    db = session.db_man
 
-    # creating full file-map (could take some mem)
-    fm = file_map = {}
-    for pkg in db.get_local_packages():
-        for fn in pkg.files:
-            fm["/" + fn] = pkg
+# Kinda useless, but the idea was nice...
+#elif options.query and options.filesystem:
+    #db = session.db_man
 
-    # checking filesystem against map
-    searchdirs = ["/usr", "/etc", "/var", "/boot", "/opt", "/bin", "/sbin", \
-                  "/lib"]
-    exclude = ["/usr/lib/python2.6"]
-    orphans = []
+    ## creating full file-map (could take some mem)
+    #fm = file_map = {}
+    #for pkg in db.get_local_packages():
+        #for fn in pkg.files:
+            #fm["/" + fn] = pkg
 
-    def callback(arg, path, content):
-        for fn in content:
-            fp = fullpath = os.path.join(path, fn)
-            if fp in exclude:
-                content.remove(fn)
-                continue
-            if os.path.isdir(fp):
-                continue
-            if fp not in fm:
-                orphans.append(fp)
+    ## checking filesystem against map
+    #searchdirs = ["/usr", "/etc", "/var", "/boot", "/opt", "/bin", "/sbin", \
+                  #"/lib"]
+    #exclude = ["/usr/lib/python2.6"]
+    #orphans = []
 
-    for path in searchdirs:
-        os.path.walk("/usr", callback, None)
+    #def callback(arg, path, content):
+        #for fn in content:
+            #fp = fullpath = os.path.join(path, fn)
+            #if fp in exclude:
+                #content.remove(fn)
+                #continue
+            #if os.path.isdir(fp):
+                #continue
+            #if fp not in fm:
+                #orphans.append(fp)
 
-    print "[+] Found {0} orphans:".format(len(orphans))
-    for orphan in orphans:
-        print "[i] {0}".format(orphan)
+    #for path in searchdirs:
+        #os.path.walk("/usr", callback, None)
+
+    #print "[+] Found {0} orphans:".format(len(orphans))
+    #for orphan in orphans:
+        #print "[i] {0}".format(orphan)
 
 elif options.query:
     db = session.db_man
@@ -421,7 +446,8 @@ elif options.query:
         in_aur, manually_installed = 0, 0
         if pkg.reason == p.PM_PKG_REASON_EXPLICIT:
             manually_installed += 1
-        if options.aur and not db.get_package(pkg.name, repos=config.repos):
+
+        if config.aur_support and not db.get_package(pkg.name, repos=config.repos):
             aur_pkgs.add(pkg)
 
         pkg_opts = "[{0}] [{1}]".format(

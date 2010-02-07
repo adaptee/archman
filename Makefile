@@ -13,7 +13,7 @@ build: swig
 	cp build/lib.linux-$(ARCH)-2.6/_pyalpmm_raw.so .
 
 swig:
-	swig -python pyalpmm_raw/pyalpmm_raw.i
+	swig -python -copyctor -Wall pyalpmm_raw/pyalpmm_raw.i
 	cp pyalpmm_raw/pyalpmm_raw.py .
 
 clean:

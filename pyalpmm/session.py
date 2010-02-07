@@ -39,6 +39,7 @@ class Session(object):
 
         self.config = config
         p.alpm_option_set_root(config.rootpath)
+        p.alpm_option_set_arch(config.architecture)
 
         # set up and register databases
         if p.alpm_option_set_dbpath(config.local_db_path) == -1:
@@ -136,8 +137,10 @@ class System(object):
         with tobj:
             tobj.aquire()
             if not isinstance(tobj, DatabaseUpdateTransaction):
+                targets = tobj.get_targets()
                 self.events.ProcessingPackages(
-                    pkgs=[p for p in tobj.get_targets()])
+                    add=targets["add"], remove=targets["remove"]
+                )
             tobj.commit()
 
     def _is_package_installed(self, pkgname):

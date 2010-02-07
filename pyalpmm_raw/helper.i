@@ -39,9 +39,14 @@ alpm_list_t *get_list_from_ptr(alpm_list_t **d){
 alpm_list_t *helper_create_alpm_list(PyObject *list) {
     int i;
     alpm_list_t *out = NULL;
+    char *string = NULL;
 
-    for(i=0; i<PyList_Size(list); ++i)
-        out = alpm_list_add(out, PyString_AsString(PyList_GetItem(list, i)));
+    for(i=0; i<PyList_Size(list); ++i){
+        string = malloc(PyString_Size(PyList_GetItem(list, i)));
+        Py_INCREF(string);
+        strcpy(string, PyString_AsString(PyList_GetItem(list, i)));
+        out = alpm_list_add(out, string);
+    }
     return out;
 }
 

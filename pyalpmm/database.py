@@ -70,10 +70,10 @@ class DatabaseManager(object):
         :param iterable: a set/tuple/list of strings, which all name a database
         """
         if not isinstance(iterable, (tuple, set, list)):
-            raise DatabaseError(
-                "You have to pass a tuple, set, list or an ancestor of them \
-                as the `repos` keyword argument, \
-                you passed a {0}".format(type(iterable))
+            raise DatabaseError((
+                "You have to pass a tuple, set, list or an ancestor of them "
+                "as the `repos` keyword argument, "
+                "you passed a {0}").format(type(iterable))
             )
 
         dbs = []
@@ -226,6 +226,10 @@ class DatabaseManager(object):
         """Get all sync-able groups"""
         return self.get_groups(repos=self.sync_dbs.keys())
 
+    # to be complete, here should be: get_local_group(name)
+    #                                 get_sync_group(name)
+
+
     def get_package(self, pkgname, repos=None, raise_ambiguous=False):
         """Return package either for sync or for local repo
 
@@ -240,10 +244,10 @@ class DatabaseManager(object):
 
         :param pkgname: the package name to look for
         :param repos: a list of the repositiory names, which will be used to
-                      search the package name inside
+                      search the package name inside (optional)
         :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
                                 there is more than one hit, if False, just
-                                return the first hit
+                                return the first hit (optional)
         """
 
         # check for leading "/"
@@ -280,7 +284,7 @@ class DatabaseManager(object):
         :param pkgname: the package name to look for
         :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
                                 there is more than one hit, if False, just
-                                return the first hit
+                                return the first hit (optional)
         """
         return self.get_package(
             pkgname,
@@ -294,7 +298,7 @@ class DatabaseManager(object):
         :param pkgname: the package name to look for
         :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
                                 there is more than one hit, if False, just
-                                return the first hit
+                                return the first hit (optional)
         """
         return self.get_package(
             pkgname,
@@ -304,20 +308,29 @@ class DatabaseManager(object):
 
     def get_group(self, grpname, repos=None, raise_ambiguous=False):
         """Get one group from the database
+
         :param grpname: the name of the searched group
         :param repos: (optional) arg is to search only in the given databases
+        :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
+                                there is more than one hit, if False, just
+                                return the first hit (optional)
+                                As there are groups, which are split over
+                                several repos, this option makes no sense...!!!
         """
-        repos = self._get_repositories(repos)
+        db_objs = self._get_repositories(repos or self.dbs)
 
         grps = []
-        for grp in (db.get_groups() for db in repos):
-            if grp.name == grpname:
-                grps.add(grp)
-        try:
-            return self._handle_result(grps, raise_ambiguous)
-        except DatabaseError as e:
-            e.format(grpname)
-            raise e
+        for grp_list in (db.get_groups() for db in db_objs):
+            for grp in grp_list:
+                if grp.name == grpname:
+                    grps.append(grp)
+        return grps
+        #self._handle_result(grps, raise_ambiguous)
+        #try:
+        #    return self._handle_result(grps, raise_ambiguous)
+        #except DatabaseError as e:
+        #    e.format(grpname)
+        #    raise e
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""

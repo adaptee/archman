@@ -38,7 +38,7 @@ class Events(object):
              "AskUpgradeLocalNewer",              # (pkg: PackageItem)
              "AskRemoveHoldPkg",                  # (pkg: PackageItem)
              "AskReplacePkg",                     # (pkg, rep_pkg: PackageItem, repo: str)
-             "AskRemoveConflictingPackage",       # (pkg, conf_pkg: PackageItem)
+             "AskRemoveConflictingPackage",       # (pkg, conf_pkg: str)
              "AskRemoveCorruptedPackage",         # (pkg: PackageItem)
              # database updates
              "DatabaseUpToDate",                  # (repo: str)
@@ -51,7 +51,7 @@ class Events(object):
              "DoneTransactionPrepare",            # ()
              "DoneTransactionCommit",             # ()
              # System info
-             "ProcessingPackages",                # (pkgs: list of PackageItem)
+             "ProcessingPackages",                # (add, remove: lists of PackageItem or None)
              "ReInstallingPackage",               # (pkg: PackageItem)
              # session info
              "StartInitSession",                  # ()
@@ -112,7 +112,7 @@ class Events(object):
             file(self.logfile, "a").write("%20s - [%25s] %s\n" % \
                 (datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
                  kw["event"],
-                 " ".join("%s: %s" % (k,v) for k,v in kw["data"].items())))
+                 " ".join("{0}: {1}".format(k,v) for k,v in kw["data"].items())))
 
     def AskInstallIgnorePkgRequired(self, **kw):
         """Should pyalpmm upgrade a package, which is a member of the
@@ -121,7 +121,7 @@ class Events(object):
         - kw["pkg"]: instance of :class:`PackageItem` - demanding package
         - kw["req_pkg"]: instance of :class:`PackageItem` - required package
         """
-        if AskUser(("%s wants to have %s, "
+        if AskUser(("[?] %s wants to have %s, "
                     "but it is in IgnorePkg/IgnoreGrp - proceed?") % \
                    (kw["pkg"].name, kw["req_pkg"].name)).answer == "y":
             return 1
@@ -133,7 +133,7 @@ class Events(object):
 
         - kw["pkg"]: instance of :class:`PackageItem`
         """
-        if AskUser("%s is in IgnorePkg/IgnoreGrp - proceed anyway?" % \
+        if AskUser("[?] %s is in IgnorePkg/IgnoreGrp - proceed anyway?" % \
                    kw["pkg"].name).answer == "y":
             return 1
         return 0
@@ -144,7 +144,7 @@ class Events(object):
 
         - kw["pkg"]: instance of :class:`PackageItem`
         """
-        if AskUser("%s's local version is newer - upgrade anyway?" % \
+        if AskUser("[?] %s's local version is newer - upgrade anyway?" % \
                    kw["pkg"].name).answer == "y":
             return 1
         return 0
@@ -154,7 +154,7 @@ class Events(object):
 
         - kw["pkg"]: instance of :class:`PackageItem`
         """
-        if AskUser("%s is in HoldPkg - remove anyway?" % \
+        if AskUser("[?] %s is in HoldPkg - remove anyway?" % \
                    kw["pkg"]).answer == "y":
             return 1
         return 0
@@ -166,7 +166,7 @@ class Events(object):
         - kw["repo"]: name of the repository
         - kw["rep_pkg"]: instance of :class:`PackageItem` - "new" package
         """
-        if AskUser("%s should be replaced with %s/%s - proceed?" % \
+        if AskUser("[?] %s should be replaced with %s/%s - proceed?" % \
             (kw["pkg"].name, kw["repo"], kw["rep_pkg"].name)).answer == "y":
             return 1
         return 0
@@ -177,9 +177,8 @@ class Events(object):
         - kw["pkg"]: instance of :class:`PackageItem` - stays
         - kw["conf_pkg"]: instance of :class:`PackageItem` - to-be-removed
         """
-        if AskUser("%s conflicts with %s - remove %s" % \
-            (kw["pkg"].name, kw["conf_pkg"].name, kw["conf_pkg"].name)
-            ).answer == "y":
+        if AskUser("[?] Package {0} conflicts with {1} - remove {1}? (y/n) ".\
+                   format(kw["pkg"], kw["conf_pkg"])).answer == "y":
             return 1
         return 0
 
@@ -188,7 +187,7 @@ class Events(object):
 
         - kw["pkg"]: instance of :class:`PackageItem`
         """
-        if AskUser("%s is corrupted - remove it?" % \
+        if AskUser("[?] %s is corrupted - remove it?" % \
                    kw["pkg"].name).answer == "y":
             return 1
         return 0

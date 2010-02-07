@@ -67,10 +67,10 @@ const char *alpm_version(void);
 
 /* Levels */
 typedef enum _pmloglevel_t {
-	PM_LOG_ERROR    = 0x01,
-	PM_LOG_WARNING  = 0x02,
-	PM_LOG_DEBUG    = 0x04,
-	PM_LOG_FUNCTION = 0x08
+	PM_LOG_ERROR    = 1,
+	PM_LOG_WARNING  = (1 << 1),
+	PM_LOG_DEBUG    = (1 << 2),
+	PM_LOG_FUNCTION = (1 << 3)
 } pmloglevel_t;
 
 typedef void (*alpm_cb_log)(pmloglevel_t, char *, va_list);
@@ -86,14 +86,12 @@ typedef void (*alpm_cb_totaldl)(off_t total);
 /** A callback for downloading files
  * @param url the URL of the file to be downloaded
  * @param localpath the directory to which the file should be downloaded
- * @param mtimeold the modification time of the file previously downloaded
- * @param mtimenew the modification time of the newly downloaded file.
- * This should be set by the callback.
- * @return 0 on success, 1 if the modification times are identical, -1 on
+ * @param force whether to force an update, even if the file is the same
+ * @return 0 on success, 1 if the file exists and is identical, -1 on
  * error.
  */
 typedef int (*alpm_cb_fetch)(const char *url, const char *localpath,
-		time_t mtimeold, time_t *mtimenew);
+		int force);
 
 /*
  * Options
@@ -128,8 +126,8 @@ int alpm_option_set_logfile(const char *logfile);
 const char *alpm_option_get_lockfile();
 /* no set_lockfile, path is determined from dbpath */
 
-unsigned short alpm_option_get_usesyslog();
-void alpm_option_set_usesyslog(unsigned short usesyslog);
+int alpm_option_get_usesyslog();
+void alpm_option_set_usesyslog(int usesyslog);
 
 alpm_list_t *alpm_option_get_noupgrades();
 void alpm_option_add_noupgrade(const char *pkg);
@@ -151,9 +149,11 @@ void alpm_option_add_ignoregrp(const char *grp);
 void alpm_option_set_ignoregrps(alpm_list_t *ignoregrps);
 int alpm_option_remove_ignoregrp(const char *grp);
 
-unsigned short alpm_option_get_nopassiveftp();
-void alpm_option_set_nopassiveftp(unsigned short nopasv);
-void alpm_option_set_usedelta(unsigned short usedelta);
+const char *alpm_option_get_arch();
+void alpm_option_set_arch(const char *arch);
+
+int alpm_option_get_usedelta();
+void alpm_option_set_usedelta(int usedelta);
 
 pmdb_t *alpm_option_get_localdb();
 alpm_list_t *alpm_option_get_syncdbs();
@@ -194,7 +194,7 @@ typedef enum _pmpkgreason_t {
 	PM_PKG_REASON_DEPEND = 1  /* installed as a dependency for another package */
 } pmpkgreason_t;
 
-int alpm_pkg_load(const char *filename, unsigned short full, pmpkg_t **pkg);
+int alpm_pkg_load(const char *filename, int full, pmpkg_t **pkg);
 int alpm_pkg_free(pmpkg_t *pkg);
 int alpm_pkg_checkmd5sum(pmpkg_t *pkg);
 char *alpm_fetch_pkgurl(const char *url);
@@ -224,15 +224,14 @@ alpm_list_t *alpm_pkg_get_deltas(pmpkg_t *pkg);
 alpm_list_t *alpm_pkg_get_replaces(pmpkg_t *pkg);
 alpm_list_t *alpm_pkg_get_files(pmpkg_t *pkg);
 alpm_list_t *alpm_pkg_get_backup(pmpkg_t *pkg);
-alpm_list_t *alpm_pkg_get_removes(pmpkg_t *pkg);
 pmdb_t *alpm_pkg_get_db(pmpkg_t *pkg);
 void *alpm_pkg_changelog_open(pmpkg_t *pkg);
 size_t alpm_pkg_changelog_read(void *ptr, size_t size,
 		const pmpkg_t *pkg, const void *fp);
 /*int alpm_pkg_changelog_feof(const pmpkg_t *pkg, void *fp);*/
 int alpm_pkg_changelog_close(const pmpkg_t *pkg, void *fp);
-unsigned short alpm_pkg_has_scriptlet(pmpkg_t *pkg);
-unsigned short alpm_pkg_has_force(pmpkg_t *pkg);
+int alpm_pkg_has_scriptlet(pmpkg_t *pkg);
+int alpm_pkg_has_force(pmpkg_t *pkg);
 
 off_t alpm_pkg_download_size(pmpkg_t *newpkg);
 
@@ -262,34 +261,27 @@ pmpkg_t *alpm_sync_newversion(pmpkg_t *pkg, alpm_list_t *dbs_sync);
  * Transactions
  */
 
-/* Types */
-typedef enum _pmtranstype_t {
-	PM_TRANS_TYPE_UPGRADE = 1,
-	PM_TRANS_TYPE_REMOVE,
-	PM_TRANS_TYPE_REMOVEUPGRADE,
-	PM_TRANS_TYPE_SYNC
-} pmtranstype_t;
 
 /* Flags */
 typedef enum _pmtransflag_t {
-	PM_TRANS_FLAG_NODEPS = 0x01,
-	PM_TRANS_FLAG_FORCE = 0x02,
-	PM_TRANS_FLAG_NOSAVE = 0x04,
-	/* 0x08 flag can go here */
-	PM_TRANS_FLAG_CASCADE = 0x10,
-	PM_TRANS_FLAG_RECURSE = 0x20,
-	PM_TRANS_FLAG_DBONLY = 0x40,
-	/* 0x80 flag can go here */
-	PM_TRANS_FLAG_ALLDEPS = 0x100,
-	PM_TRANS_FLAG_DOWNLOADONLY = 0x200,
-	PM_TRANS_FLAG_NOSCRIPTLET = 0x400,
-	PM_TRANS_FLAG_NOCONFLICTS = 0x800,
-	/* 0x1000 flag can go here */
-	PM_TRANS_FLAG_NEEDED = 0x2000,
-	PM_TRANS_FLAG_ALLEXPLICIT = 0x4000,
-	PM_TRANS_FLAG_UNNEEDED = 0x8000,
-	PM_TRANS_FLAG_RECURSEALL = 0x10000,
-	PM_TRANS_FLAG_NOLOCK = 0x20000
+	PM_TRANS_FLAG_NODEPS = 1,
+	PM_TRANS_FLAG_FORCE = (1 << 1),
+	PM_TRANS_FLAG_NOSAVE = (1 << 2),
+	/* (1 << 3) flag can go here */
+	PM_TRANS_FLAG_CASCADE = (1 << 4),
+	PM_TRANS_FLAG_RECURSE = (1 << 5),
+	PM_TRANS_FLAG_DBONLY = (1 << 6),
+	/* (1 << 7) flag can go here */
+	PM_TRANS_FLAG_ALLDEPS = (1 << 8),
+	PM_TRANS_FLAG_DOWNLOADONLY = (1 << 9),
+	PM_TRANS_FLAG_NOSCRIPTLET = (1 << 10),
+	PM_TRANS_FLAG_NOCONFLICTS = (1 << 11),
+	/* (1 << 12) flag can go here */
+	PM_TRANS_FLAG_NEEDED = (1 << 13),
+	PM_TRANS_FLAG_ALLEXPLICIT = (1 << 14),
+	PM_TRANS_FLAG_UNNEEDED = (1 << 15),
+	PM_TRANS_FLAG_RECURSEALL = (1 << 16),
+	PM_TRANS_FLAG_NOLOCK = (1 << 17)
 } pmtransflag_t;
 
 /**
@@ -376,12 +368,12 @@ typedef enum _pmtransevt_t {
 
 /* Transaction Conversations (ie, questions) */
 typedef enum _pmtransconv_t {
-	PM_TRANS_CONV_INSTALL_IGNOREPKG = 0x01,
-	PM_TRANS_CONV_REPLACE_PKG = 0x02,
-	PM_TRANS_CONV_CONFLICT_PKG = 0x04,
-	PM_TRANS_CONV_CORRUPTED_PKG = 0x08,
-	PM_TRANS_CONV_LOCAL_NEWER = 0x10,
-	PM_TRANS_CONV_REMOVE_PKGS = 0x20,
+	PM_TRANS_CONV_INSTALL_IGNOREPKG = 1,
+	PM_TRANS_CONV_REPLACE_PKG = (1 << 1),
+	PM_TRANS_CONV_CONFLICT_PKG = (1 << 2),
+	PM_TRANS_CONV_CORRUPTED_PKG = (1 << 3),
+	PM_TRANS_CONV_LOCAL_NEWER = (1 << 4),
+	PM_TRANS_CONV_REMOVE_PKGS = (1 << 5),
 } pmtransconv_t;
 
 /* Transaction Progress */
@@ -402,18 +394,22 @@ typedef void (*alpm_trans_cb_conv)(pmtransconv_t, void *, void *,
 /* Transaction Progress callback */
 typedef void (*alpm_trans_cb_progress)(pmtransprog_t, const char *, int, int, int);
 
-pmtranstype_t alpm_trans_get_type();
-unsigned int alpm_trans_get_flags();
-alpm_list_t * alpm_trans_get_pkgs();
-int alpm_trans_init(pmtranstype_t type, pmtransflag_t flags,
+int alpm_trans_get_flags();
+alpm_list_t * alpm_trans_get_add();
+alpm_list_t * alpm_trans_get_remove();
+int alpm_trans_init(pmtransflag_t flags,
                     alpm_trans_cb_event cb_event, alpm_trans_cb_conv conv,
                     alpm_trans_cb_progress cb_progress);
-int alpm_trans_sysupgrade(int enable_downgrade);
-int alpm_trans_addtarget(char *target);
 int alpm_trans_prepare(alpm_list_t **data);
 int alpm_trans_commit(alpm_list_t **data);
 int alpm_trans_interrupt(void);
 int alpm_trans_release(void);
+
+int alpm_sync_sysupgrade(int enable_downgrade);
+int alpm_sync_target(char *target);
+int alpm_sync_dbtarget(char *db, char *target);
+int alpm_add_target(char *target);
+int alpm_remove_target(char *target);
 
 /*
  * Dependencies and conflicts
@@ -441,6 +437,7 @@ alpm_list_t *alpm_checkconflicts(alpm_list_t *pkglist);
 
 const char *alpm_conflict_get_package1(pmconflict_t *conflict);
 const char *alpm_conflict_get_package2(pmconflict_t *conflict);
+const char *alpm_conflict_get_reason(pmconflict_t *conflict);
 
 pmdepmod_t alpm_dep_get_mod(const pmdepend_t *dep);
 const char *alpm_dep_get_name(const pmdepend_t *dep);
@@ -509,6 +506,7 @@ enum _pmerrno_t {
 	PM_ERR_PKG_OPEN,
 	PM_ERR_PKG_CANT_REMOVE,
 	PM_ERR_PKG_INVALID_NAME,
+	PM_ERR_PKG_INVALID_ARCH,
 	PM_ERR_PKG_REPO_NOT_FOUND,
 	/* Deltas */
 	PM_ERR_DLT_INVALID,

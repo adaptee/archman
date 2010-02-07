@@ -111,7 +111,7 @@ class ProgressBar(object):
 
         :param value: the now reached value
         """
-        time.sleep(0.1)
+        time.sleep(0.02)
         if self.endvalue:
             self.percent = min((value / (self.endvalue/100.)), 100)
             filled = int(math.ceil((self.bar_width/100.) * self.percent))
@@ -169,8 +169,6 @@ class AskUser(object):
             sys.stdout.write(question)
             sys.stdout.flush()
             self.answer = ans = raw_input().lower()
-            sys.stdout.write("\r")
-            sys.stdout.flush()
 
 
 class FancyOutput(object):
@@ -182,6 +180,9 @@ class FancyOutput(object):
     def __init__(self, data):
         self.raw = data
         self.out = data
+
+    def rebuild(self, **kw):
+        return self.__class__(self.raw, **kw)
 
     def __len__(self):
         return len(self.out)
@@ -195,13 +196,22 @@ class FancyOutput(object):
 
 class FancySize(FancyOutput):
     """Nicely format filesizes in B, kB, MB and GB suffixes"""
-    def __init__(self, bytes):
+
+    suffixes = {"B":1. ,"kB": 1024., "MB": 1024*1024., "GB": 1024*1024*1024.}
+
+    def __init__(self, bytes, force_suffix=None):
         self.raw = b = self.out = long(bytes)
-        suffixes = ["B","kB", "MB", "GB"]
-        for i in xrange(len(suffixes)-1, -1, -1):
-            if b > 1024**i:
-                self.out = "%.1f %s" % (b/float(1024**i), suffixes[i])
-                break
+        self.force_suffix = force_suffix
+
+        if force_suffix in self.suffixes:
+            label, divider = force_suffix, self.suffixes[force_suffix]
+            self.out = "{0:.1f} {1}".format(b/divider, label)
+
+        else:
+            for label, divider in self.suffixes.items():
+                if 1 <= (b / divider) < 1024:
+                    self.out = "{0:.1f} {1}".format(b/divider, label)
+                    break
 
 class FancyFileConflictType(FancyOutput):
     """Human readable represantation of the file conflict types"""
