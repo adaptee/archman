@@ -14,8 +14,9 @@ import shutil
 import tarfile
 import urllib
 from StringIO import StringIO
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT, call
 from time import sleep
+import signal
 
 from item import PackageItem, AURPackageItem
 from events import Events
@@ -110,26 +111,29 @@ class PackageBuilder(object):
         # if run as root, setuid to other user
         if os.getuid() == 0:
             os.chown(self.path, c.build_uid, c.build_gid)
-            rpipe, wpipe = os.pipe()
+
+            recv, send = os.pipe()
             pid = os.fork()
             if pid == 0:
                 os.setuid(c.build_uid)
-                ret = os.system(makepkg)
+                ret = call(makepkg.split(" "))
+                os.write(send, str(ret))
                 if ret != 0:
-                    raise BuildError("makepkg threw an error: {0}".format(ret))
-                os.write(wpipe, str(ret))
-                sleep(2)
-                sys.exit()
+                    print "[e] makepkg threw an error: {0}".format(ret)
+                print "[i] exiting build-process"
             else:
-                ret = int(os.read(rpipe, 1))
+                ret = os.read(recv, 1024)
+                os.kill(pid, signal.SIGKILL)
+
                 if ret != 0:
-                    raise BuildError("The build failed with the makepkg"
-                                     "returncode: {0}".format(ret))
+                    print ("[e] The build failed with the makepkg "
+                           "returncode: {0}").format(ret)
+                    print "[!] exiting..."
+                    sys.exit()
         else:
             if not os.system(makepkg) == 0:
                 raise BuildError("The build was not successful, "
                                  "could not change user-uid - you are not root")
-
         self.events.DoneBuild()
 
         # kinda ugly
@@ -139,10 +143,8 @@ class PackageBuilder(object):
                 break
 
         if self.pkgfile_path is None:
-            raise BuildError("The package could not be built.\n"
-                             "Either watch the debug generated during the "
-                             "build\nor check the build-dir for problems: %s" %
-                             c.build_dir )
+            raise BuildError("The package file could not be found, "
+                             "maybe check the build-dir: {0}".format(self.path))
 
     # TODO: this maybe should callback so you could have a gui editor easily
     def edit(self):
