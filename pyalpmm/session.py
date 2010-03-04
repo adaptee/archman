@@ -12,6 +12,7 @@ DatabaseManager instance as 'db_man'.
 """
 
 import os, sys
+import urllib
 
 import pyalpmm_raw as p
 
@@ -20,6 +21,7 @@ from tools import CriticalError, CachedProperty
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
      SyncTransaction, DatabaseError
+from pbuilder import PackageBuilder
 
 class SessionError(CriticalError):
     pass
@@ -59,7 +61,6 @@ class Session(object):
 
         self.config.events.DoneInitSession()
 
-    # DAMN, why doesn't this work!?
     def release(self):
         """Release the session"""
         p.alpm_release()
@@ -250,11 +251,71 @@ class System(object):
 
         :param targets: pkgnames as a list of str
         """
+        db_man = self.session.db_man
+        c = self.session.config
+
+        # throwing "ReInstallingPackage" Event if target already in sync
         for item in targets:
             pkg = self._is_package_installed(item)
             if pkg is not False:
                 self.events.ReInstallingPackage(pkg=pkg)
-        self._handle_transaction(SyncTransaction, targets=targets)
+
+        # find repositories for all packages
+        pkg_map = dict((
+            k,
+            db_man.get_sync_package(k, raise_ambiguous=True)
+        ) for k in targets)
+
+        stack = [x for x in pkg_map.values() if x.repo == "aur"]
+        aur_targets = [k for k, v in pkg_map.items() if v.repo == "aur"]
+        targets = [tar for tar in targets if tar not in aur_targets]
+
+        while len(stack) > 0:
+            pkg = stack.pop()
+            url = c.aur_url + c.aur_pkg_dir + pkg.name + "/" + pkg.name + \
+                "/" +"PKGBUILD"
+            deps = []
+            for line in urllib.urlopen(url).read().split("\n"):
+                if "depends" in line.lower() or "makedepends" in line.lower():
+                    deps.extend(line[line.find("(")+1:line.find(")")].split())
+
+            # IGNORING VERSIONS HERE !!! FIXME!!!!!!!!!
+            for dep in deps:
+                dep = dep.strip("'")
+                if dep.find("<") != -1: dep = dep[:dep.find("<")]
+                elif dep.find("==") != -1: dep = dep[:dep.find("==")]
+                elif dep.find(">") != -1: dep = dep[:dep.find(">")]
+
+                if dep in targets or self.session.db_man.get_local_package(dep):
+                    continue
+
+                pkg = self.session.db_man.get_sync_package(dep)
+                if pkg is None:
+                    raise SystemError(
+                        "Could not find the package anywhere: {0}".format(dep))
+                elif pkg.repo == "aur":
+                    stack.append(pkg)
+                    aur_targets.append(pkg.name)
+                else:
+                    targets.append(pkg.name)
+
+        if len(aur_targets) > 0:
+            aur_pkg_objs = [db_man.get_sync_package(name) for name in aur_targets]
+            self.events.ProcessingAURPackages(add=aur_pkg_objs)
+
+            for pkg_obj in reversed(aur_pkg_objs):
+                p = PackageBuilder(self.session, pkg_obj)
+                if self.session.config.build_edit:
+                    p.edit()
+                if self.session.config.build_cleanup:
+                    p.cleanup()
+                if self.session.config.build_prepare:
+                    p.prepare()
+                p.build()
+                self.upgrade_packages([p.pkgfile_path])
+
+        if len(targets) > 0:
+            self._handle_transaction(SyncTransaction, targets=targets)
 
     def sys_upgrade(self):
         """Upgrade the whole system with the latest available packageversions"""

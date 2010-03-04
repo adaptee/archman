@@ -52,6 +52,7 @@ class Events(object):
              "DoneTransactionCommit",             # ()
              # System info
              "ProcessingPackages",                # (add, remove: lists of PackageItem or None)
+             "ProcessingAURPackages",             # (add: lists of AURPackageItem or None)
              "ReInstallingPackage",               # (pkg: PackageItem)
              # session info
              "StartInitSession",                  # ()

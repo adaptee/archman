@@ -12,7 +12,7 @@ import time
 import sys, os
 import math
 from functools import update_wrapper
-
+from operator import le, lt, eq, ne, ge, gt
 import pyalpmm_raw as p
 
 def CachedProperty(method):
@@ -131,7 +131,7 @@ class ProgressBar(object):
     @property
     def max_width(self):
         """Maximum available width in this console window"""
-        return int(os.popen('stty size', 'r').read().split()[1])
+        return int(os.popen('stty size', 'r').read().split()[1]) - 3
 
     @property
     def bar_width(self):
@@ -261,6 +261,46 @@ class FancyPackage(FancyOutput):
         o += "###>"
         self.raw = pkg
         self.out = o
+
+class FancyVersion(FancyOutput):
+    """Provide a convenient way to store and compare different version labels"""
+    def __init__(self, version):
+        self.raw = d = version
+        self.data = version.split(".") if "." in version else d
+        #d = sum([sub_version.split("-") for sub_version in d], [])
+
+        self.out = self.raw
+
+    def _general_compare(self, other, operator):
+        if isinstance(other, str):
+            return operator(self.raw, other)
+        elif not isinstance(other, FancyVersion):
+            raise TypeError("You can only compare a FancyVersion "
+                            "against another FancyVersion")
+        for i in range(min(len(other.data), len(self.data))):
+            if operator(self.data[i], other.data[i]):
+                return True
+        return False
+    def __lt__(self, other):
+        return self._general_compare(other, lt)
+    def __le__(self, other):
+        return self._general_compare(other, le)
+    def __gt__(self, other):
+        return self._general_compare(other, gt)
+    def __ge__(self, other):
+        return self._general_compare(other, ge)
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.raw == other
+        elif not isinstance(other, FancyVersion):
+            raise TypeError("You can only compare a FancyVersion "
+                            "against another FancyVersion")
+        if self.raw == other.raw:
+            return True
+        return False
+
 
 class CriticalError(Exception):
     def __init__(self, msg):

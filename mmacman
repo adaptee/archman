@@ -153,6 +153,15 @@ class MMacmanEvents(Events):
     def ProgressConflict(self, **kw):
         self._progress("Checking File Conflicts:", kw)
 
+    def ProcessingAURPackages(self, **kw):
+        print "[i] Building the following AUR packages now!"
+        for pkg in kw["add"]:
+            print "    [i] {0}".format(pkg.name)
+
+        print
+        if AskUser("[?] Really continue (y/n)? ").answer == "n":
+            raise UserError("User aborted/declined operation!")
+
     def ProcessingPackages(self, **kw):
         isize, size, rsize = 0, 0, 0
 
@@ -193,6 +202,10 @@ class MMacmanEvents(Events):
             raise UserError("User aborted/declined operation!")
 
 
+#### ADD NO CONFIRM
+#### ADD NO TRANSPARENCY
+
+
 parser = OptionParser()
 group = OptionGroup(parser, "General Options",
                     "Can be used standalone and in combination with any other options")
@@ -212,6 +225,13 @@ group.add_option("-w", "--downloadonly", dest="download_only", action="store_tru
                   help="only download packages")
 group.add_option("-i", "--info", dest="info", action="store_true",
                   help="Get info for some package. With -Q local and with -S from sync repo")
+group.add_option("", "--no-confirm", dest="confirm", action="store_false",
+                  help="Never ask the user for confirmation", default=True)
+group.add_option("", "--no-transparency", dest="transparency",
+                 action="store_false", default=True,
+                 help="Do not try to transparently handle the AUR")
+
+
 parser.add_option_group(group)
 
 group = OptionGroup(parser, "Sync Actions",
@@ -290,14 +310,23 @@ session = Session(config)
 
 # global exception catcher func callback
 def exc_cb(type_, val, trace):
-    #if not issubclass(type_, (CriticalError, UserError)):
-    #    raise type_(val)
-    raise type_(val)
-    #if issubclass(type_, CriticalError):
-    #    print "[e] A {0} occured:".format(type_.__name__)
+    if not issubclass(type_, (CriticalError, UserError)):
+        raise type_(val)
+    if issubclass(type_, CriticalError):
+        print "[e] A {0} occured:".format(type_.__name__)
 
-    #print "[e] {0}".format(val)
+        import traceback
+        with file("/tmp/mmacman_error.log", "w") as fd:
+            for line in traceback.extract_tb(trace):
+                fd.write("{0[0]} Line: {0[1]}\n   func: {0[2]}\n{0[3]}\n\n". \
+                         format(line))
+        print "[i] Wrote traceback to /tmp/mmacman_error.log"
+    print "[e] {0}".format(val)
 
+    import sys
+    sys.exit(1)
+
+## TODO: write correct signal handling here
 def sig_cb(signal, frame):
     print "[e] Got Signal: {0}".format(signal)
     print "[e] {0}".format(frame)
@@ -336,6 +365,10 @@ if not options.build_prepare:
     print "[i]     Do not prepare PackageBuilder (--no-prepare)"
 if not options.recursive_remove:
     print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
+if not options.transparency:
+    print "[i]     Switched off the AUR transparency (--no-transparency)"
+if not options.confirm:
+    print "[i]     The user will not be asked for confirmation (--no-confirm)"
 
 if options.update:
     system.update_databases()

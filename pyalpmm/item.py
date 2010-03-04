@@ -16,7 +16,8 @@ from itertools import chain
 import pyalpmm_raw as p
 
 import lists as List
-from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType
+from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType,\
+     FancyVersion
 
 
 class AbstractItem(object):
@@ -127,9 +128,10 @@ class PackageItem(AbstractItem):
     extract = p.helper_list_getpkg
     cdesc = "pkg"
 
-    local_key_map = {"reason" : FancyReason, "depends" : List.DependencyList,
-                     "isize" : FancySize, "builddate" : FancyDateTime,
-                     "installdate" : FancyDateTime, "size" : FancySize}
+    local_key_map = {"reason": FancyReason, "depends": List.DependencyList,
+                     "isize": FancySize, "builddate": FancyDateTime,
+                     "installdate": FancyDateTime, "size": FancySize,
+                     "version": FancyVersion }
 
 class AURPackageItem(AbstractItem):
     """This is still a little messy here. But at this point I doubt I have no

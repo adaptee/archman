@@ -98,9 +98,9 @@ class DatabaseManager(object):
             return None
 
         raise DatabaseError(
-            "Found multiple hits with the same query: '{0}'.\
-            Be sure to set the `raise_ambiguous` keyword to `False`, \
-            if you don't want to see this exception occur"
+            ("Found multiple hits with the same query: '{0}'. "
+             "Be sure to set the `raise_ambiguous` keyword to `False`, "
+             "if you don't want to see this exception occur").format(result)
         )
 
     def register(self, tree, db):

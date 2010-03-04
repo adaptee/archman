@@ -104,7 +104,6 @@ class PackageBuilder(object):
             raise BuildError("Could not change directory to: {0}".\
                              format(self.path))
 
-        print c.force
         makepkg = "makepkg {1} {0}".format(
             "> /dev/null 2>&1" if c.build_quiet else "",
             "-f" if c.force else ""
@@ -116,12 +115,18 @@ class PackageBuilder(object):
             recv, send = os.pipe()
             pid = os.fork()
             if pid == 0:
+                os.close(recv)
                 os.setuid(c.build_uid)
                 ret = str(call(makepkg.split(" ")))
-                os.write(send, ret)
+                send = os.fdopen(send, "w")
+                send.write(ret)
+                send.close()
+                sys.exit(0)
             else:
-                ret = os.read(recv, 1024)
-                os.kill(pid, signal.SIGKILL)
+                os.close(send)
+                recv = os.fdopen(recv)
+                ret = recv.read()
+                os.waitpid(pid, 0)
 
                 if ret != "0":
                     raise BuildError("[e] The build failed with the makepkg "

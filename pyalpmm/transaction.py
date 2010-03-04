@@ -67,7 +67,7 @@ class Transaction(object):
     :param session: instance of :class:`pyalpmm.session.Session`
     :param targets: a list of strings identifying the packages to process
     """
-    def __init__(self, session, targets = None):
+    def __init__(self, session, targets=None):
         self.session = session
         self.events = self.session.config.events
         self.targets = targets
@@ -211,9 +211,6 @@ class Transaction(object):
         self.events.DoneTransactionDestroy()
 
     def get_targets(self):
-        # This here could be one point where we create PackageLists without
-        # the repo attribute set to each package / I'm afraid there is no way
-        # to solve this
         return {
             "remove": PackageList(p.alpm_trans_get_remove()),
             "add": PackageList(p.alpm_trans_get_add())
@@ -253,7 +250,7 @@ class Transaction(object):
                 format(", ".join(out))
             )
 
-        self.targets = (toinstall, grps_toinstall)
+        #self.targets = (toinstall, grps_toinstall)
         self.events.DoneSettingTargets(targets=self.targets)
 
     def commit(self):
@@ -333,6 +330,7 @@ class AURTransaction(UpgradeTransaction):
     trans_type = "aur"
 
     def add_target(self, pkgname):
+        ## this isn used anymore ? (in transparency)
         pkg = self.session.db_man.get_sync_package(pkgname)
         if pkg is None:
             raise DatabaseError(
