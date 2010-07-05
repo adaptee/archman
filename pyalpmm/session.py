@@ -20,7 +20,8 @@ from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
 from tools import CriticalError, CachedProperty
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
-     SyncTransaction, DatabaseError
+     SyncTransaction, DatabaseError, NotFoundError, \
+     UnsatisfiedDependenciesError, FileConflictError, NothingToBeDoneError
 from pbuilder import PackageBuilder
 
 class SessionError(CriticalError):
@@ -96,12 +97,15 @@ class System(object):
     """
     catch_signals = ["SIGINT", "SIGTERM"]
 
-    def __init__(self, session, global_exc_cb=False, global_sig_cb=False):
+    def __init__(self, session, global_exc_cb=None, global_sig_cb=None):
         self.session = session
         self.config = session.config
         self.events = session.config.events
+
         self.global_exc_cb = global_exc_cb
         self.global_sig_cb = global_sig_cb
+
+        self.exc_handler = []
 
         # if wanted init global exception catching with callback func
         if global_exc_cb:
@@ -134,15 +138,24 @@ class System(object):
 
     def _handle_transaction(self, tcls, **kw):
         self._is_root()
-        tobj = tcls(self.session, **kw)
-        with tobj:
-            tobj.aquire()
-            if not isinstance(tobj, DatabaseUpdateTransaction):
-                targets = tobj.get_targets()
-                self.events.ProcessingPackages(
-                    add=targets["add"], remove=targets["remove"]
-                )
-            tobj.commit()
+        try:
+            tobj = tcls(self.session, **kw)
+            with tobj:
+                tobj.aquire()
+                if not isinstance(tobj, DatabaseUpdateTransaction):
+                    targets = tobj.get_targets()
+                    self.events.ProcessingPackages(
+                        add=targets["add"], remove=targets["remove"]
+                    )
+                tobj.commit()
+        except NotFoundError as e:
+            self.events.PackageNotFound(e=e)
+        except UnsatisfiedDependenciesError as e:
+            self.events.UnsatisfiedDependencies(e=e)
+        except FileConflictError as e:
+            self.events.FileConflictDetected(e=e)
+        except NothingToBeDoneError as e:
+            self.events.NothingToBeDone(e=e)
 
     def _is_package_installed(self, pkgname):
         loc_pkg = self.session.db_man.get_local_package(pkgname)
@@ -157,16 +170,24 @@ class System(object):
         needed as a dependency
 
         :param pkgname: name of the package as a string
+
         """
         exclude_packages = set(exclude_packages or set())
         pkg = self.session.db_man.get_local_package(pkgname)
         if pkg is None:
             return True
 
-        return pkg.reason == p.PM_PKG_REASON_DEPEND and \
-               (pkgname not in self.dependency_map or
-                len(set(self.dependency_map[pkgname]) - exclude_packages) == 0)
+        # was not installed as dependency, so wanted by the user, is NEEDED
+        if not pkg.reason == p.PM_PKG_REASON_DEPEND:
+            return False
 
+        names = [pkgname] + list(pkg.replaces or []) + list(pkg.provides or [])
+        return all(
+            name not in self.dependency_map or
+            (name in self.dependency_map and
+             len(set(self.dependency_map[name]) - exclude_packages) == 0)
+            for name in names
+        )
 
     def _init_global_exception_handler(self, callback):
         def exceptionhooker(exception_type, exception_value, traceback_obj):
@@ -340,7 +361,7 @@ class System(object):
         pacman and also search inside the package descriptions.
 
         :param pkgname: the query which should be searched for"""
-        query = {"name": pkgname, "desc": pkgname}
+        query = {"name": pkgname.lower(), "desc": pkgname.lower()}
         return sorted(
             self.session.db_man.search_sync_package(**query),
             key=lambda p: (p.repo, p.name)

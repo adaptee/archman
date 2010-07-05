@@ -33,31 +33,32 @@ from pyalpmm.lists import MissList, StringList, DependencyList, FileConflictList
 from pyalpmm.item import PackageItem
 from pyalpmm.pbuilder import PackageBuilder, BuildError
 
+class NotFoundError(CriticalError):
+    """Rarget cannot be added to the transaction"""
+
+class UnsatisfiedDependenciesError(CriticalError):
+    """Target cannot be removed, because there are packages depending on it"""
+    def __init__(self, msg, pkgs):
+        self.data = pkgs
+        super(UnsatisfiedDependenciesError, self).__init__(msg)
+
+class FileConflictError(CriticalError):
+    """One or more target-package-files conflict with local files"""
+    def __init__(self, msg, data):
+        self.data = [{
+            "type": item.type, "file": item.file, "target_pkg": item.ctarget,
+            "local_pkg": item.target if p.PM_FILECONFLICT_FILESYSTEM else None
+        } for item in data]
+        super(FileConflictError, self).__init__(msg)
+
+class NothingToBeDoneError(CriticalError):
+    """Could not find something to do, aborting"""
+
 class TransactionError(CriticalError):
-    """
-    TransactionError(s) gets a special treatment for different types of
+    """TransactionError(s) gets a special treatment for different types of
     TransactionErrors that can occur. The concept is not soo bad, but far away
     from complete I guess.
     """
-    def __init__(self, msg, ml = None, cl = None):
-        if ml:
-            self.misslist = ml
-            for item in ml:
-                msg += "\n[i] Dependency %s for %s could not be satisfied" % (
-                    item.target, item.dep.name
-                )
-        elif cl:
-            #p.alpm_conflict_get_reason(conflict)
-            self.conflictlist = cl
-            for item in cl:
-                if item.type == p.PM_FILECONFLICT_TARGET:
-                    msg += "\n[i] %s: %s (pkg: %s and conflict pkg: %s)" % (
-                        item.type, item.file, item.target, item.ctarget)
-                else:
-                    msg += "\n[i] %s: %s (pkg: %s)" % (
-                        item.type, item.file, item.target)
-        super(TransactionError, self).__init__(msg)
-
 
 class Transaction(object):
     """The baseclass for all *Transaction classes.
@@ -121,7 +122,7 @@ class Transaction(object):
 
         self.targets = self.get_targets()
         if len(self.targets["remove"]) + len(self.targets["add"]) == 0:
-            raise TransactionError("Nothing to be done...")
+            raise NothingToBeDoneError("Nothing to be done...")
 
         self.events.DoneTransactionPrepare()
 
@@ -245,7 +246,7 @@ class Transaction(object):
 
         # need some check WHY targets could not be added! (fileconflicts...)
         if len(out) > 0:
-            raise TransactionError(
+            raise NotFoundError(
                 "Not all targets could be added, the remaining are: {0}".\
                 format(", ".join(out))
             )
@@ -258,7 +259,7 @@ class Transaction(object):
         filesystem and the databases
         """
         if len(self.targets["add"]) + len(self.targets["remove"]) == 0:
-            raise TransactionError("Nothing to be done...")
+            raise NothingToBeDoneError("Nothing to be done...")
 
         if p.alpm_trans_commit(self.__backend_data) == -1:
             self.handle_error(p.get_errno())
@@ -271,15 +272,15 @@ class Transaction(object):
         """
         err_msg = "ALPM error: {0} ({1})"
         if errno == p.PM_ERR_UNSATISFIED_DEPS:
-            ml = MissList(p.get_list_from_ptr(self.__backend_data))
-            raise TransactionError(
-                err_msg.format(p.alpm_strerror(errno), errno), ml=ml)
+            raise UnsatisfiedDependenciesError(
+                "There are unsatisfied dependencies for this operation:",
+                MissList(p.get_list_from_ptr(self.__backend_data))
+            )
         elif errno == p.PM_ERR_FILE_CONFLICTS:
-            cl = FileConflictList(p.get_list_from_ptr(self.__backend_data))
-            raise TransactionError(
-                err_msg.format(p.alpm_strerror(errno), errno), cl=cl)
-        elif errno == p.PM_ERR_PKG_NOT_FOUND:
-            raise TransactionError("Not all targets could be added, which?")
+            raise FileConflictError(
+                "The target package(s) conflict with local files",
+                FileConflictList(p.get_list_from_ptr(self.__backend_data))
+            )
         else:
             raise TransactionError(
                 err_msg.format(p.alpm_strerror(errno), errno))

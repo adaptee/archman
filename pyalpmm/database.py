@@ -325,12 +325,10 @@ class DatabaseManager(object):
                 if grp.name == grpname:
                     grps.append(grp)
         return grps
-        #self._handle_result(grps, raise_ambiguous)
-        #try:
-        #    return self._handle_result(grps, raise_ambiguous)
-        #except DatabaseError as e:
-        #    e.format(grpname)
-        #    raise e
+
+    # untested
+    def set_package_reason(self, pkg, reason_id):
+        p.alpm_db_set_pkgreason(self.dbs["local"], pkg.name, reason_id)
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""

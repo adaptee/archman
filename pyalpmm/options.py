@@ -217,6 +217,7 @@ class PyALPMMConfiguration(ConfigMapper):
     noextracts = ListConfigItem("general")
     cachedirs = ListConfigItem("general", ["/var/cache/pacman/pkg/"])
     architecture = StringConfigItem("general", "i686");
+    pkg_suffix = StringConfigItem("general", "tar.xz");
 
     local_db_path = StringConfigItem("paths", "/var/lib/pacman")
     rootpath = StringConfigItem("paths", "/")

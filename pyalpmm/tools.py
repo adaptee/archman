@@ -55,6 +55,8 @@ class ProgressBar(object):
         self.label = label or ""
         self.percent = 0
         self.tick = 0
+        self.last_step = time.time() - 20
+        self.last_sleep = 0.020
 
     def _get_bar(self, filled):
         """Return the :class:`ProgressBar` directly ready to write it on the
@@ -111,7 +113,13 @@ class ProgressBar(object):
 
         :param value: the now reached value
         """
-        time.sleep(0.02)
+        # dynamicly optimize the sleep duration for maximal speed
+        time.sleep(self.last_sleep)
+        self.last_sleep = int(self.last_sleep*0.5) \
+            if (time.time() - self.last_step < self.last_sleep*1.1) else \
+            int(self.last_sleep*1.3)
+        self.last_step = time.time()
+
         if self.endvalue:
             self.percent = min((value / (self.endvalue/100.)), 100)
             filled = int(math.ceil((self.bar_width/100.) * self.percent))

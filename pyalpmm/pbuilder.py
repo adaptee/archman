@@ -138,7 +138,7 @@ class PackageBuilder(object):
 
         # kinda ugly
         for fn in os.listdir(self.path):
-            if fn.endswith(".pkg.tar.gz"):
+            if fn.endswith(c.pkg_suffix):
                 self.pkgfile_path = os.path.join(self.path, fn)
                 break
 

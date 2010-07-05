@@ -142,7 +142,7 @@ class PackageList(LazyList):
         res = set()
         kw = self._parse_keywords(kw)
         for pkg in self:
-            if any(op(v.lower(), (pkg.get_info(k) or "").lower()) \
+            if any(op(v, pkg.get_info(k) or "") \
                    for k, (v, op) in kw.items()):
                 res.add(pkg)
         return list(res)
@@ -187,7 +187,11 @@ class AURPackageList(PackageList):
 
         :param kw: the search query as a dict
         """
+        # the AUR can only be searched for names
         kw = self._parse_keywords(kw)
+        if "name" not in kw:
+            return []
+
         data = {"type": "search", "arg": kw["name"][0]}
         rpc_url = self.config.aur_url + self.config.rpc_command
         res = eval(urllib.urlopen(rpc_url % data).read())["results"]

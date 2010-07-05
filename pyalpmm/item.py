@@ -131,7 +131,7 @@ class PackageItem(AbstractItem):
     local_key_map = {"reason": FancyReason, "depends": List.DependencyList,
                      "isize": FancySize, "builddate": FancyDateTime,
                      "installdate": FancyDateTime, "size": FancySize,
-                     "version": FancyVersion }
+                     "version": FancyVersion}
 
 class AURPackageItem(AbstractItem):
     """This is still a little messy here. But at this point I doubt I have no
@@ -170,7 +170,7 @@ class GroupItem(AbstractItem):
 
 class DependencyItem(AbstractItem):
     """Stands for a single dependency and its string represantation"""
-    attributes = ["name", "mod", "version", "string"]
+    attributes = ["name", "mod", "version"]
     ctype = "pmdepend_t"
     extract = p.helper_list_getdep
     cdesc = "dep"

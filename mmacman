@@ -8,7 +8,7 @@ from optparse import OptionParser, OptionGroup
 from pyalpmm import Session, PyALPMMConfiguration, Events, System
 from pyalpmm.transaction import SyncTransaction, RemoveTransaction, \
      UpgradeTransaction, AURTransaction, DatabaseUpdateTransaction, \
-     SysUpgradeTransaction
+     SysUpgradeTransaction, NotFoundError
 from pyalpmm.tools import AskUser, CriticalError, FancyPackage, ProgressBar, \
      UserError, FancySize
 from pyalpmm.pbuilder import PackageBuilder, BuildError
@@ -174,7 +174,7 @@ class MMacmanEvents(Events):
                    "add": "[i] Adding/Upgrading the following packages:"}[which]
             dashes = "-"*63
             print "+" + dashes + "+"
-            for pkg in kw[which]:
+            for pkg in sorted(kw[which], key=lambda pkg: pkg.name):
                 isize_obj = pkg.isize.rebuild(force_suffix="MB")
                 size_obj = pkg.size.rebuild(force_suffix="MB")
                 if which == "add":
@@ -201,6 +201,20 @@ class MMacmanEvents(Events):
         if AskUser("[?] Really continue (y/n)? ").answer == "n":
             raise UserError("User aborted/declined operation!")
 
+    # Errors
+    def PackageNotFound(self, **kw):
+	print "[e] {0}".format(kw["e"])
+
+    def UnsatisfiedDependencies(self, **kw):
+	print "[e] {0}".format(kw["e"])
+	print kw["e"].data
+
+    def FileConflictDetected(self, **kw):
+	print "[e] {0}".format(kw["e"])
+	print kw["e"].data
+
+    def NothingToBeDone(self, **kw):
+	print "[e] {0}".format(kw["e"])
 
 #### ADD NO CONFIRM
 #### ADD NO TRANSPARENCY
@@ -310,19 +324,17 @@ session = Session(config)
 
 # global exception catcher func callback
 def exc_cb(type_, val, trace):
-    if not issubclass(type_, (CriticalError, UserError)):
-        raise type_(val)
-    if issubclass(type_, CriticalError):
-        print "[e] A {0} occured:".format(type_.__name__)
+    print "[e] A {0} occured:".format(type_.__name__)
+    print "[e] Looks like a bug, submit /tmp/mmacman_error.log please"
+    from traceback import print_exception
+    from sys import argv
+    with file("/tmp/mmacman_error.log", "w") as fd:
+	fd.write("Error occured!!!\n")
+	fd.write("Command: {0}\n".format(" ".join(argv)))
+	fd.write("Traceback following:\n\n")
+	print_exception(type_, val, trace, file=fd)
 
-        import traceback
-        with file("/tmp/mmacman_error.log", "w") as fd:
-            for line in traceback.extract_tb(trace):
-                fd.write("{0[0]} Line: {0[1]}\n   func: {0[2]}\n{0[3]}\n\n". \
-                         format(line))
-        print "[i] Wrote traceback to /tmp/mmacman_error.log"
-    print "[e] {0}".format(val)
-
+        print "[i] Wrote crash info to /tmp/mmacman_error.log"
     import sys
     sys.exit(1)
 

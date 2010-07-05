@@ -81,6 +81,14 @@ class Events(object):
              # log - not a real event though
              "Log"
 
+             # problems/errors
+             # (high level events, only available within a System instance)
+             # (if you're using lowlvl interface,
+             #  those will be thrown as exceptions)
+             "PackageNotFound",                   # (e: instance of NotFoundError)
+             "UnsatisfiedDependencies",           # (e: instance of UnsatisfiedDependenciesError)
+             "FileConflictDetected",              # (e: instance of FileConflictError)
+             "NothingToBeDone"                    # (e: instance of NothingToBeDoneError)
         )
     def __init__(self):
         self.bound_events = [meth for meth in dir(self) if meth in self.names]
