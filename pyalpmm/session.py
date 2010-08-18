@@ -17,7 +17,7 @@ import urllib
 import pyalpmm_raw as p
 
 from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
-from tools import CriticalError, CachedProperty
+from tools import CriticalError, CachedProperty, UserError
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
      SyncTransaction, DatabaseError, NotFoundError, \
@@ -87,6 +87,9 @@ class Session(object):
 class SystemError(CriticalError):
     pass
 
+class NotRootError(SystemError):
+    pass
+
 class System(object):
     """The highest-level API from pyalpmm, changing the system entirely
     with just some lines of code.
@@ -133,12 +136,12 @@ class System(object):
         if self.session.config.rights == "root":
             return True
         if critical:
-            raise SystemError("You must be root make these changes!")
+            raise NotRootError("You must be root make these changes!")
         return False
 
     def _handle_transaction(self, tcls, **kw):
-        self._is_root()
         try:
+            self._is_root()
             tobj = tcls(self.session, **kw)
             with tobj:
                 tobj.aquire()
@@ -148,6 +151,8 @@ class System(object):
                         add=targets["add"], remove=targets["remove"]
                     )
                 tobj.commit()
+        except NotRootError as e:
+            self.events.NotRoot(e=e)
         except NotFoundError as e:
             self.events.PackageNotFound(e=e)
         except UnsatisfiedDependenciesError as e:
@@ -156,6 +161,8 @@ class System(object):
             self.events.FileConflictDetected(e=e)
         except NothingToBeDoneError as e:
             self.events.NothingToBeDone(e=e)
+        except UserError as e:
+            self.events.UserAbort(e=e)
 
     def _is_package_installed(self, pkgname):
         loc_pkg = self.session.db_man.get_local_package(pkgname)

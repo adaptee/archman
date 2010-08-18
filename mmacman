@@ -203,18 +203,26 @@ class MMacmanEvents(Events):
 
     # Errors
     def PackageNotFound(self, **kw):
-	print "[e] {0}".format(kw["e"])
+        print "[e] {0}".format(kw["e"])
 
     def UnsatisfiedDependencies(self, **kw):
-	print "[e] {0}".format(kw["e"])
-	print kw["e"].data
+        print "[e] {0}".format(kw["e"])
+        print kw["e"].data
 
     def FileConflictDetected(self, **kw):
-	print "[e] {0}".format(kw["e"])
-	print kw["e"].data
+        print "[e] {0}".format(kw["e"])
+        print kw["e"].data
 
     def NothingToBeDone(self, **kw):
-	print "[e] {0}".format(kw["e"])
+        print "[e] {0}".format(kw["e"])
+
+    def NotRoot(self, **kw):
+        print "[e] {0}".format(kw["e"])
+        sys.exit()
+
+    def UserAbort(self, **kw):
+        print "[e] {0}".format(kw["e"])
+        sys.exit()
 
 #### ADD NO CONFIRM
 #### ADD NO TRANSPARENCY
@@ -424,9 +432,9 @@ elif options.query and options.info:
 
     if options.info:
         if options.show_files:
-            print "[+] Showing filelist of: {0}".format(args[0])
+            print "[+] Showing filelist of: {0}-{1}".format(args[0], pkg.version)
             for fn in pkg.files:
-                print "[i] {0}".format(fn)
+                print "[F] {0}".format(fn)
         else:
             print FancyPackage(pkg)
 

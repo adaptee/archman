@@ -376,8 +376,10 @@ class SyncDatabase(AbstractDatabase):
 
         :param force: the database ignores a possible no-need-to-update
         """
-        r = p.alpm_db_update(force, self.db)
+        r = p.alpm_db_update(1, self.db)
         if r < 0:
+            print p.alpm_strerrorlast()
+            print r
             raise DatabaseError(
                 "Database '{0}' could not be updated".format(self.tree))
         elif r == 1:

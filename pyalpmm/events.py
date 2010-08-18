@@ -88,7 +88,9 @@ class Events(object):
              "PackageNotFound",                   # (e: instance of NotFoundError)
              "UnsatisfiedDependencies",           # (e: instance of UnsatisfiedDependenciesError)
              "FileConflictDetected",              # (e: instance of FileConflictError)
-             "NothingToBeDone"                    # (e: instance of NothingToBeDoneError)
+             "NothingToBeDone",                   # (e: instance of NothingToBeDoneError)
+             "NotRoot",                           # (e: instance of NotRootError)
+             "UserAbort"                          # (e: instance of UserError)
         )
     def __init__(self):
         self.bound_events = [meth for meth in dir(self) if meth in self.names]
