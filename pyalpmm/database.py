@@ -401,5 +401,5 @@ class AURDatabase(SyncDatabase):
         return []
 
     def update(self, force=None):
-        """There is no need to update because we always issue an RPC request"""
+        """There is no need to update because we always send an RPC request"""
         return True

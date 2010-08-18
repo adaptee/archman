@@ -43,22 +43,19 @@ class ConfigItem(object):
     - default: a default value, which is taken if neither the instance defined
                a default nor the config file has an entry for this option
     """
-    converter = lambda s, v: v
+    # this method is called for data that is read
+    inconv = lambda s, v: v
+    # and this one is called for data to be written
+    outconv = lambda s, v: v
+
     default = None
 
     def __init__(self, section, default_value=None):
         self.section = section
-        self._val = self.raw_val = default_value \
+        self.value = default_value \
             if default_value is not None else self.default
-        # set inside config mapper __init__
+        # this is set inside ConfigMapper.__init__
         self.name = None
-
-    def _get_value(self):
-        return self._val
-    def _set_value(self, val):
-        self.raw_val = val
-        self._val = self.converter(val)
-    value = property(_get_value, _set_value)
 
     def __get__(self, obj, cls):
         return self.value
@@ -66,49 +63,51 @@ class ConfigItem(object):
         self.value = val
 
     def __repr__(self):
-        return "<{0} name={1} val=\"{2}\">".format(
+        return "<{0} name={1} val=\"{2}\" section=\"{3}\">".format(
             self.__class__.__name__,
-            self.name,
-            self.value
+            self.name, self.value, self.section
         )
 
 class StringConfigItem(ConfigItem):
     """Holds a string of config data"""
-    converter = lambda s, v: str(v)
+    inconv = lambda s, v: str(v)
+    outconv = lambda s, v: str(v)
     default = ""
 
 class IntegerConfigItem(ConfigItem):
     """Holds an integer of config data"""
-    converter = lambda s, v: int(v)
+    inconv = lambda s, v: int(v)
+    outconv = lambda s, v: str(v)
     default = 0
 
 class ListConfigItem(ConfigItem):
     """Holds a list of config data"""
-    converter = lambda s, v: [x.strip() for x in
+    inconv = lambda s, v: [x.strip() for x in
                               (v.split(",") if "," in v else v.split(" "))]
+    outconv = lambda s, v: ",".join(v)
     default = []
 
     def __iter__(self):
-        for item in self._val:
+        for item in self.value:
             yield item
 
     def __getitem__(self, key):
         print "get key: %s" % key
-        return self._val[key]
+        return self.value[key]
 
     def __len__(self):
-        return len(self._val)
+        return len(self.value)
 
 
 class YesNoConfigItem(ConfigItem):
     """Is either True or False"""
-    converter = lambda s, v: v.lower() == "yes" if v.lower() in ["no", "yes"] \
+    inconv = lambda s, v: v.lower() == "yes" if v.lower() in ["no", "yes"] \
               else bool(v)
+    outconv = lambda s, v: "yes" if v else "no"
     default = False
 
 class CommandlineItem(ConfigItem):
     """A special ConfigItem, which is passed through the commandline"""
-    #converter = lambda s, v: False if v == "False" else bool(v)
     default = False
 
     def __init__(self, default_value=None):
@@ -180,6 +179,12 @@ class ConfigMapper(object):
     def __contains__(self, key):
         return key in self.cmdline_items.keys() + self.config_items.keys()
 
+    def __iter__(self):
+        for k, v in self.config_items.items():
+            yield (k, v)
+        for k, v in self.cmdline_items.items():
+            yield (k, k)
+
     def set_cmdline_arg(self, option_name, value):
         """Directly set a commandline option to 'value'"""
         self.cmdline_items[option_name].value = value
@@ -194,16 +199,25 @@ class ConfigMapper(object):
         """Read configuration from file into the object attributes"""
         for item in self.config_items.values():
             if self.confobj.has_option(item.section, item.name):
-                item.value = self.confobj.get(item.section, item.name).strip()
+                item.value = item.inconv(self.confobj.get(item.section, item.name).strip())
             elif self.strict:
                 raise ConfigError("Didn't find section: %s with option: %s" % (
                     item.section,
                     item.name
                 ))
 
-    def write_to_file(self):
-        """Yes, TODO ;)"""
-        raise NotImplementedError
+    def create_default_config(self, fn="pyalpmm.conf"):
+        """Write the default config settings to a file"""
+        conf_obj = RawConfigParser()
+        written_sections = []
+        for k, v in self.config_items.items():
+            if v.section not in written_sections:
+                written_sections.append(v.section)
+                conf_obj.add_section(v.section)
+            conf_obj.set(v.section, k, v.outconv(v.value))
+
+        with open(fn, "w") as fd:
+            conf_obj.write(fd)
 
 
 class PyALPMMConfiguration(ConfigMapper):
@@ -235,7 +249,6 @@ class PyALPMMConfiguration(ConfigMapper):
     build_uid = IntegerConfigItem("aur", 1000)
     build_gid = IntegerConfigItem("aur", 100)
     editor_command = StringConfigItem("aur", "vim")
-    #aur_installed_pkgs = StringConfigItem("aur", "/var/lib/pacman/aur_installed_pkgs")
 
     # commandline options
     download_only = CommandlineItem(0)
@@ -278,22 +291,28 @@ class PyALPMMConfiguration(ConfigMapper):
 
         if os.path.exists(config_fn):
             pass # found regular config, all fine, go on...
-        elif not os.path.exists(config_fn):
+#       elif not os.path.exists(config_fn):
+        else:
             if os.path.exists(thisdir):
                 print "[i] %s isn't there - took ./%s as configfile" % \
                       (config_fn, thisdir)
                 config_fn = self.configfile = thisdir
-            if os.path.exists(parentdir):
+            elif os.path.exists(parentdir):
                 print "[i] %s isn't there - took %s as configfile" % \
                       (config_fn, parentdir)
                 config_fn = self.configfile = parentdir
-        else:
-            raise ConfigError(("No configfile could not be found at the "
-                               "given place: %s, also tried the active "
-                               "directory and the parent directory") % thisdir)
+            else:
+                print "[i] could not find any configfile at: '/etc/pyalpmm.conf', './pyalpmm.conf' or '../pyalpmm.conf'"
+                print "[i] using default configuration, you can create a config file with --create-config-file"
+                config_fn = self.configfile = None
 
+        #else:
+        #    raise ConfigError(("No configfile could not be found at the "
+        #                       "given place: %s, also tried the active "
+        #                       "directory and the parent directory") % thisdir)
+        #print config_fn
         super(PyALPMMConfiguration, self).__init__(
-            file(self.configfile),
+            self.configfile and file(self.configfile) or None,
             cmd_args
         )
 
@@ -338,8 +357,8 @@ class PyALPMMConfiguration(ConfigMapper):
                 break
 
         for repo in self.repos:
-            self.available_repositories[repo] = \
-                repo_tmpl.replace("$repo", repo)
+            self.available_repositories[repo] = repo_tmpl. \
+                replace("$repo", repo).replace("$arch", self.architecture)
 
         # reading additional repos from configfile
         for k,v in self.confobj.items("repositories"):
@@ -347,5 +366,7 @@ class PyALPMMConfiguration(ConfigMapper):
                 self.available_repositories[k] = v
 
         self.events.DoneReadingConfigFile(filename=(self.configfile))
+
+
 
 
