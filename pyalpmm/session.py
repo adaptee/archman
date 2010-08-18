@@ -294,6 +294,12 @@ class System(object):
             db_man.get_sync_package(k, raise_ambiguous=True)
         ) for k in targets)
 
+        if any(v is None for v in pkg_map.values()):
+            self.events.PackageNotFound(e=NotFoundError(
+                "Not all targets could be found in the repos: {0}". \
+                format(",".join(k for k, v in pkg_map.items() if v is None))))
+            return
+
         stack = [x for x in pkg_map.values() if x.repo == "aur"]
         aur_targets = [k for k, v in pkg_map.items() if v.repo == "aur"]
         targets = [tar for tar in targets if tar not in aur_targets]
