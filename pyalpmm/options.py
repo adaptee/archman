@@ -306,11 +306,6 @@ class PyALPMMConfiguration(ConfigMapper):
                 print "[i] using default configuration, you can create a config file with --create-config-file"
                 config_fn = self.configfile = None
 
-        #else:
-        #    raise ConfigError(("No configfile could not be found at the "
-        #                       "given place: %s, also tried the active "
-        #                       "directory and the parent directory") % thisdir)
-        #print config_fn
         super(PyALPMMConfiguration, self).__init__(
             self.configfile and file(self.configfile) or None,
             cmd_args
