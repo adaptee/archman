@@ -127,12 +127,13 @@ class PackageBuilder(object):
                 recv = os.fdopen(recv)
                 ret = recv.read()
                 os.waitpid(pid, 0)
+                recv.close()
 
                 if ret != "0":
-                    raise BuildError("[e] The build failed with the makepkg "
-                           "returncode: {0}").format(ret)
+                    raise BuildError("The build failed with the makepkg "
+                           "returncode: {0}".format(ret))
         else:
-            raise BuildError("[e] you are not root!")
+            raise BuildError("you are not root!")
 
         self.events.DoneBuild()
 

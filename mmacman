@@ -29,6 +29,8 @@ class MMacmanEvents(Events):
         self.last_pkg = None
         self.line_dirty = False
         self.last_total_download = None
+        self.want_user_confirm = True
+
 
     def _clean_line(self, cleanup_text="\n"):
         if self.line_dirty:
@@ -88,6 +90,13 @@ class MMacmanEvents(Events):
         self.progress_obj = None
         pass
 
+    def StartPreAURTransaction(self, **kw):
+        print
+        print "[i] The following packages are installed from regular repos"
+        print "[i] After this the following AUR packages will be built: {0}". \
+              format(", ".join(kw["aur_targets"]))
+        print
+
     def StartBuild(self, **kw):
         print "[+] Starting build: {0.name}-{0.version}".format(kw["pkg"])
 
@@ -120,9 +129,10 @@ class MMacmanEvents(Events):
             for name, pkg in self.processed_pkgs.items():
                 if fn.find(name) == 0:
                     self.active_pkg = pkg
-            size = int(pkg.size.raw)
-            label = "[D] {0.name}-{0.version}".format(self.active_pkg)
             assert self.active_pkg is not None
+            size = int(self.active_pkg.size.raw)
+            label = "[D] {0.name}-{0.version}".format(self.active_pkg)
+
 
         self.progress_obj = ProgressBar(size, label)
 
@@ -159,6 +169,10 @@ class MMacmanEvents(Events):
             print "    [i] {0}".format(pkg.name)
 
         print
+
+        if not self.want_user_confirm:
+            return
+
         if AskUser("[?] Really continue (y/n)? ").answer == "n":
             raise UserError("User aborted/declined operation!")
 
@@ -198,6 +212,9 @@ class MMacmanEvents(Events):
             print "[i] Total diskspace released:{0:>34}". \
                   format(FancySize(rsize))
 
+        if not self.want_user_confirm:
+            return
+
         if AskUser("[?] Really continue (y/n)? ").answer == "n":
             raise UserError("User aborted/declined operation!")
 
@@ -207,11 +224,21 @@ class MMacmanEvents(Events):
 
     def UnsatisfiedDependencies(self, **kw):
         print "[e] {0}".format(kw["e"])
-        print kw["e"].data
+        for miss in kw["e"].data:
+            print ("[!]   '{0.target}' depends on '{0.causingpkg}', which "
+                   "is marked for removal").format(miss)
 
     def FileConflictDetected(self, **kw):
+        print
         print "[e] {0}".format(kw["e"])
-        print kw["e"].data
+        info = kw["e"].data
+        for conflict in info:
+            if not conflict["target_pkg"]:
+                print ("[!]   '{0[local_pkg]}' conflicts with "
+                       "local file: '{0[file]}'").format(conflict)
+            else:
+                print ("[!]   '{0[target_pkg]}' and '{0[local_pkg]}' contain a "
+                       "conflicting file: '{0[file]}'").format(conflict)
 
     def NothingToBeDone(self, **kw):
         print "[e] {0}".format(kw["e"])
@@ -224,9 +251,15 @@ class MMacmanEvents(Events):
         print "[e] {0}".format(kw["e"])
         sys.exit()
 
-#### ADD NO CONFIRM
-#### ADD NO TRANSPARENCY
+    def BuildProblem(self, **kw):
+        print "[e] {0}".format(kw["e"])
+        sys.exit()
 
+    def ConflictingDependencies(self, **kw):
+        print "[e] {0}".format(kw["e"])
+        sys.exit()
+
+#### ADD NO TRANSPARENCY
 
 parser = OptionParser()
 group = OptionGroup(parser, "General Options",
@@ -236,7 +269,6 @@ group.add_option("-y", "--update", dest="update", action="store_true",
 group.add_option("-c", "--configfile", dest="configfile", metavar="FILE", default="/etc/pyalpmm.conf",
                  help="use given file as a config file")
 parser.add_option_group(group)
-
 
 group = OptionGroup(parser, "Additional flags", "To be used in combination with other actions")
 group.add_option("-f", "--force", dest="force", action="store_true",
@@ -249,10 +281,11 @@ group.add_option("-i", "--info", dest="info", action="store_true",
                  help="Get info for some package. With -Q local and with -S from sync repo")
 group.add_option("", "--no-confirm", dest="confirm", action="store_false",
                  help="Never ask the user for confirmation", default=True)
+# no transparency not implemented ...
 group.add_option("", "--no-transparency", dest="transparency",
                  action="store_false", default=True,
-                 help="Do not try to transparently handle the AUR")
-
+                 help="Do not try to transparently handle the AUR " \
+                      "(cannnot be switched off atm, so this option does nil)")
 
 parser.add_option_group(group)
 
@@ -277,15 +310,19 @@ group = OptionGroup(parser, "Query Actions",
 group.add_option("-Q", "--query", dest="query", action="store_true",
                  help="List all local packages")
 group.add_option("", "--aur", dest="aur", action="store_true",
-                 help="While listing all packages, check which ones are from AUR")
-group.add_option("", "--loner", dest="loner", action="store_true",
-                 help="Search for 'lonely' packages, means not explicitly " \
+                 help="While listing all packages, check which ones are " \
+                      "from AUR. More precisly: which ones are not in the" \
+                      "regular repositories." )
+group.add_option("", "--orphan", dest="orphan", action="store_true",
+                 help="Search for 'orphan' packages, means not explicitly " \
                  "installed packages, which are not required by any " \
                  "other installed package")
 group.add_option("-F", "--files", dest="show_files", action="store_true",
                  help="List of all files in the given package")
 group.add_option("-o", "--owns", dest="owns", action="store_true",
                  help="Look for package that contains the given file/dir/path")
+group.add_option("-g", "--groups", dest="groups", action="store_true",
+                 help="List all groups available in the sync repository")
 
 parser.add_option_group(group)
 
@@ -293,7 +330,7 @@ group = OptionGroup(parser, "Remove Actions",
                     "-R activates the Remove Actions")
 group.add_option("-R", "--remove", dest="remove", action="store_true",
                  help="Remove the given packages from the system")
-group.add_option("", "--no-recu", dest="recursive_remove",
+group.add_option("", "--no-recursive", dest="recursive_remove",
                  default="True", action="store_false",
                  help="Do not recursivly remove unneeded dependencies on remove")
 parser.add_option_group(group)
@@ -349,11 +386,16 @@ def exc_cb(type_, val, trace):
     import sys
     sys.exit(1)
 
-## TODO: write correct signal handling here
 def sig_cb(signal, frame):
-    print "[e] Got Signal: {0}".format(signal)
-    print "[e] {0}".format(frame)
-    print "cannot cancel, wait till end"
+    global system
+    signal_name = {2: "SIGINT", 15: "SIGTERM"}[signal]
+    print
+    print "[e] Got Signal: {0}".format(signal_name)
+    if system.transaction_active:
+        if p.alpm_trans_interrupt() == 0:
+            print "[!] The running transaction was successfully interrupted"
+    print "[!] exiting now..."
+    sys.exit(1)
 
 system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
 #system = System(session)
@@ -367,7 +409,7 @@ if options.cpc:
         print "[!] deleted: {0}".format(path)
 
 elif options.create_config:
-    print "[i] trying to write default configuration to a file"
+    print "[i] write default configuration to a file"
     if len(args) < 2:
         fn = "pyalpmm.conf" if len(args) == 0 else args[0]
         print "[i] target file: {0}".format(fn)
@@ -403,6 +445,7 @@ if not options.transparency:
     print "[i]     Switched off the AUR transparency (--no-transparency)"
 if not options.confirm:
     print "[i]     The user will not be asked for confirmation (--no-confirm)"
+    session.config.events.want_user_confirm = False
 
 if options.update:
     system.update_databases()
@@ -425,6 +468,12 @@ if options.sync and options.search:
     for pkg in result:
         print "[P] {0.repo}/{0.name}-{0.version} ".format(pkg)
         print "       {0.desc}".format(pkg)
+
+elif options.query and options.groups:
+    print "[+] available groups in repositories and their packagecount:"
+    groups = session.db_man.get_sync_groups()
+    for grp in groups:
+        print "[i] {0} ({1})".format(grp.name, len(grp.pkgs))
 
 elif options.query and options.owns:
     print "[+] looking for the owner of: '{0}'".format(args[0])
@@ -452,16 +501,16 @@ elif options.query and options.info:
         else:
             print FancyPackage(pkg)
 
-elif options.query and options.loner:
-    print "[+] Starting 'lonely' package search"
+elif options.query and options.orphan:
+    print "[+] Starting 'orphan' package search"
 
-    loners = system.get_unneeded_packages()
-    # showing loners
-    if len(loners) == 0:
-        print "[+] There were no loners found on your system!"
+    orphans = system.get_unneeded_packages()
+    # showing orphans
+    if len(orphans) == 0:
+        print "[+] There were no orphans found on your system!"
     else:
-        print "[+] I have found the following loners on your system:"
-        for pkg in loners:
+        print "[+] I have found the following orphans on your system:"
+        for pkg in orphans:
             print "    [i] {0.name}-{0.version}".format(pkg)
 
 elif options.query:

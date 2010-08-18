@@ -21,8 +21,9 @@ from tools import CriticalError, CachedProperty, UserError
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
      SyncTransaction, DatabaseError, NotFoundError, \
-     UnsatisfiedDependenciesError, FileConflictError, NothingToBeDoneError
-from pbuilder import PackageBuilder
+     UnsatisfiedDependenciesError, FileConflictError, NothingToBeDoneError, \
+     ConflictingDependenciesError
+from pbuilder import PackageBuilder, BuildError
 
 class SessionError(CriticalError):
     pass
@@ -110,6 +111,8 @@ class System(object):
 
         self.exc_handler = []
 
+        self.transaction_active = False
+
         # if wanted init global exception catching with callback func
         if global_exc_cb:
             if not callable(global_exc_cb):
@@ -139,7 +142,8 @@ class System(object):
             raise NotRootError("You must be root make these changes!")
         return False
 
-    def _handle_transaction(self, tcls, **kw):
+    def _handle_transaction(self, tcls, return_if_not_found=False, **kw):
+        self.transaction_active = True
         try:
             self._is_root()
             tobj = tcls(self.session, **kw)
@@ -154,17 +158,29 @@ class System(object):
         except NotRootError as e:
             self.events.NotRoot(e=e)
         except NotFoundError as e:
-            self.events.PackageNotFound(e=e)
+            if return_if_not_found:
+                return e.targets
+            else:
+                self.events.PackageNotFound(e=e)
         except UnsatisfiedDependenciesError as e:
             self.events.UnsatisfiedDependencies(e=e)
         except FileConflictError as e:
             self.events.FileConflictDetected(e=e)
+        except ConflictingDependenciesError as e:
+            self.events.ConflictingDependencies(e=e)
         except NothingToBeDoneError as e:
             self.events.NothingToBeDone(e=e)
+        except BuildError as e:
+            self.events.BuildProblem(e=e)
         except UserError as e:
             self.events.UserAbort(e=e)
+        finally:
+            self.transaction_active = False
 
     def _is_package_installed(self, pkgname):
+        """Check if the given package defined by `pkgname` is
+        installed and up to date
+        """
         loc_pkg = self.session.db_man.get_local_package(pkgname)
         syn_pkg = self.session.db_man.get_sync_package(pkgname)
         if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
@@ -275,7 +291,7 @@ class System(object):
         self._handle_transaction(AURTransaction, targets=targets)
 
     def sync_packages(self, targets):
-        """Syncronize local and remote version of the given targets.
+        """Syncronize local and remote versions of the given targets.
 
         :param targets: pkgnames as a list of str
         """
@@ -288,19 +304,28 @@ class System(object):
             if pkg is not False:
                 self.events.ReInstallingPackage(pkg=pkg)
 
-        # find repositories for all packages
+        # starting transaction, with special-handler for not found targets
+        not_found_targets = \
+            self._handle_transaction(SyncTransaction, True, targets=targets)
+
+        # if no return, and we reach this point, means no exception was thrown
+        # the transaction was succesfully finished
+        if not_found_targets is None:
+            return
+
+        # find repositories for all remaining packages
         pkg_map = dict((
             k,
             db_man.get_sync_package(k, raise_ambiguous=True)
-        ) for k in targets)
+        ) for k in not_found_targets)
 
         if any(v is None for v in pkg_map.values()):
             self.events.PackageNotFound(e=NotFoundError(
-                "Not all targets could be found in the repos: {0}". \
+                "Following targets could be found in the repos: {0}". \
                 format(",".join(k for k, v in pkg_map.items() if v is None))))
             return
 
-        stack = [x for x in pkg_map.values() if x.repo == "aur"]
+        stack = [pkg for pkg in pkg_map.values() if pkg.repo == "aur"]
         aur_targets = [k for k, v in pkg_map.items() if v.repo == "aur"]
         targets = [tar for tar in targets if tar not in aur_targets]
 
@@ -333,23 +358,25 @@ class System(object):
                 else:
                     targets.append(pkg.name)
 
+        if len(targets) > 0:
+            self.events.StartPreAURTransaction(
+                targets=targets, aur_targets=aur_targets)
+            self._handle_transaction(SyncTransaction, targets=targets)
+
         if len(aur_targets) > 0:
-            aur_pkg_objs = [db_man.get_sync_package(name) for name in aur_targets]
+            aur_pkg_objs = \
+                [db_man.get_sync_package(name) for name in aur_targets]
             self.events.ProcessingAURPackages(add=aur_pkg_objs)
 
-            for pkg_obj in reversed(aur_pkg_objs):
-                p = PackageBuilder(self.session, pkg_obj)
-                if self.session.config.build_edit:
-                    p.edit()
-                if self.session.config.build_cleanup:
-                    p.cleanup()
-                if self.session.config.build_prepare:
-                    p.prepare()
-                p.build()
-                self.upgrade_packages([p.pkgfile_path])
-
-        if len(targets) > 0:
-            self._handle_transaction(SyncTransaction, targets=targets)
+            c.build_install = True;
+            for aur_target in reversed(aur_targets):
+                self.build_packages([aur_target])
+            # reversing the list here is not precisely correct
+            # (no problems yet, but who knows) WRONG - there are problems:
+            # we have to build one package after another to make sure
+            # the dependencies are fullfilled, a dependency map would bring
+            # the luxury of making "bundles" of un-dependend packages!
+            # TODO: building a dependency map here
 
     def sys_upgrade(self):
         """Upgrade the whole system with the latest available packageversions"""

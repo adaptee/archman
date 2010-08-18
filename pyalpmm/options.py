@@ -57,9 +57,9 @@ class ConfigItem(object):
         # this is set inside ConfigMapper.__init__
         self.name = None
 
-    def __get__(self, obj, cls):
+    def __get__(self, obj, owner):
         return self.value
-    def __set__(self, val):
+    def __set__(self, obj, val):
         self.value = val
 
     def __repr__(self):
@@ -241,7 +241,7 @@ class PyALPMMConfiguration(ConfigMapper):
 
     aur_support = YesNoConfigItem("aur", True)
     build_quiet = YesNoConfigItem("aur", False)
-    build_dir = StringConfigItem("aur", "/var/cache/pacman/src/aur/")
+    build_dir = StringConfigItem("aur", "/var/cache/pacman/src/")
     abs_dir = StringConfigItem("aur", "/var/abs")
     aur_url = StringConfigItem("aur", "http://aur.archlinux.org/")
     aur_pkg_dir = StringConfigItem("aur", "packages/")
@@ -291,7 +291,6 @@ class PyALPMMConfiguration(ConfigMapper):
 
         if os.path.exists(config_fn):
             pass # found regular config, all fine, go on...
-#       elif not os.path.exists(config_fn):
         else:
             if os.path.exists(thisdir):
                 print "[i] %s isn't there - took ./%s as configfile" % \
@@ -302,8 +301,11 @@ class PyALPMMConfiguration(ConfigMapper):
                       (config_fn, parentdir)
                 config_fn = self.configfile = parentdir
             else:
-                print "[i] could not find any configfile at: '/etc/pyalpmm.conf', './pyalpmm.conf' or '../pyalpmm.conf'"
-                print "[i] using default configuration, you can create a config file with --create-config-file"
+                print ("[i] could not find any configfile at: "
+                      "'/etc/pyalpmm.conf', './pyalpmm.conf' "
+                      "or '../pyalpmm.conf'")
+                print ("[i] using default configuration, you can create "
+                       "a config file with --create-config-file")
                 config_fn = self.configfile = None
 
         super(PyALPMMConfiguration, self).__init__(

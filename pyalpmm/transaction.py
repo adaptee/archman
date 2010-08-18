@@ -34,7 +34,10 @@ from pyalpmm.item import PackageItem
 from pyalpmm.pbuilder import PackageBuilder, BuildError
 
 class NotFoundError(CriticalError):
-    """Rarget cannot be added to the transaction"""
+    """Target cannot be added to the transaction"""
+    def __init__(self, msg, targets):
+        self.targets = targets
+        super(NotFoundError, self).__init__(msg.format(", ".join(targets)))
 
 class UnsatisfiedDependenciesError(CriticalError):
     """Target cannot be removed, because there are packages depending on it"""
@@ -53,6 +56,10 @@ class FileConflictError(CriticalError):
 
 class NothingToBeDoneError(CriticalError):
     """Could not find something to do, aborting"""
+
+class ConflictingDependenciesError(CriticalError):
+    """Could not resolve (most likely the user said to not replace the
+    conflicting package) dependency conflict"""
 
 class TransactionError(CriticalError):
     """TransactionError(s) gets a special treatment for different types of
@@ -247,9 +254,8 @@ class Transaction(object):
         # need some check WHY targets could not be added! (fileconflicts...)
         if len(out) > 0:
             raise NotFoundError(
-                "Not all targets could be added, the remaining are: {0}".\
-                format(", ".join(out))
-            )
+                "Not all targets could be added, the remaining are: {0}", out)
+
 
         #self.targets = (toinstall, grps_toinstall)
         self.events.DoneSettingTargets(targets=self.targets)
@@ -278,9 +284,12 @@ class Transaction(object):
             )
         elif errno == p.PM_ERR_FILE_CONFLICTS:
             raise FileConflictError(
-                "The target package(s) conflict with local files",
+                "At least one target package creates a file conflict:",
                 FileConflictList(p.get_list_from_ptr(self.__backend_data))
             )
+        elif errno == p.PM_ERR_CONFLICTING_DEPS:
+            raise ConflictingDependenciesError(
+                "The conflicting dependencies could not be resolved")
         else:
             raise TransactionError(
                 err_msg.format(p.alpm_strerror(errno), errno))
@@ -326,19 +335,17 @@ class UpgradeTransaction(Transaction):
             self.handle_error(p.get_errno())
 
 class AURTransaction(UpgradeTransaction):
-    """The AURTransaction handles all the building, installing of a AUR package
+    """The AURTransaction handles all the building, installing of an AUR package
     """
     trans_type = "aur"
 
     def add_target(self, pkgname):
-        ## this isn used anymore ? (in transparency)
         pkg = self.session.db_man.get_sync_package(pkgname)
         if pkg is None:
             raise DatabaseError(
                 "I haven't found a file with the pkgname: {0} inside the AUR".\
                 format(pkgname)
             )
-
         p = PackageBuilder(self.session, pkg)
         if self.session.config.build_edit:
             p.edit()

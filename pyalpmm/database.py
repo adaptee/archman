@@ -270,12 +270,17 @@ class DatabaseManager(object):
         repos = self._get_repositories(repos or self.dbs.keys())
 
         query = {"name__eq": pkgname}
-        found = sum((repo.search_package(**query) for repo in repos), [])
+        found = []
+        for repo in repos:
+            for pkg in repo.search_package(**query):
+                pkg.repo = repo.tree
+                #found = sum((repo.search_package(**query) for repo in repos), [])
+                found.append(pkg)
 
         try:
             return self._handle_result(found, raise_ambiguous)
         except DatabaseError as e:
-            e.format("name_eq={0}".format(pkgname))
+            e.format("name__eq={0}".format(pkgname))
             raise e
 
     def get_local_package(self, pkgname, raise_ambiguous=False):
@@ -317,7 +322,7 @@ class DatabaseManager(object):
                                 As there are groups, which are split over
                                 several repos, this option makes no sense...!!!
         """
-        db_objs = self._get_repositories(repos or self.dbs)
+        db_objs = self._get_repositories(repos or self.sync_dbs.keys())
 
         grps = []
         for grp_list in (db.get_groups() for db in db_objs):

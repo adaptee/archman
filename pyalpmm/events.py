@@ -50,9 +50,10 @@ class Events(object):
              "DoneSettingTargets",                # (targets: (pkglist: list of str, grplist: list of str)
              "DoneTransactionPrepare",            # ()
              "DoneTransactionCommit",             # ()
+             "StartPreAURTransaction",            # (targets: (list of str) aur_targets: (list of str)
              # System info
              "ProcessingPackages",                # (add, remove: lists of PackageItem or None)
-             "ProcessingAURPackages",             # (add: lists of AURPackageItem or None)
+             "ProcessingAURPackages",             # (add: list of AURPackageItem or None)
              "ReInstallingPackage",               # (pkg: PackageItem)
              # session info
              "StartInitSession",                  # ()
@@ -79,7 +80,7 @@ class Events(object):
              "DoneBuildEdit",
 
              # log - not a real event though
-             "Log"
+             "Log",
 
              # problems/errors
              # (high level events, only available within a System instance)
@@ -88,9 +89,11 @@ class Events(object):
              "PackageNotFound",                   # (e: instance of NotFoundError)
              "UnsatisfiedDependencies",           # (e: instance of UnsatisfiedDependenciesError)
              "FileConflictDetected",              # (e: instance of FileConflictError)
+             "ConflictingDependencies",           # (e: instance of ConflictingDependenciesError)
              "NothingToBeDone",                   # (e: instance of NothingToBeDoneError)
              "NotRoot",                           # (e: instance of NotRootError)
-             "UserAbort"                          # (e: instance of UserError)
+             "UserAbort",                         # (e: instance of UserError)
+             "BuildProblem",                      # (e: instance of BuildError)
         )
     def __init__(self):
         self.bound_events = [meth for meth in dir(self) if meth in self.names]

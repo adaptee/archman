@@ -153,7 +153,7 @@ class AURPackageItem(AbstractItem):
 
 class GroupItem(AbstractItem):
     """Keeps all the information about a group, especially their '.pkgs'"""
-    attributes = ["name","pkgs"]
+    attributes = ["name", "pkgs"]
     #non_pacman_attributes = ["repo"]
     ctype = "pmgrp_t"
     extract = p.helper_list_getgrp
