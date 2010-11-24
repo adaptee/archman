@@ -139,7 +139,8 @@ class ProgressBar(object):
     @property
     def max_width(self):
         """Maximum available width in this console window"""
-        return int(os.popen('stty size', 'r').read().split()[1]) - 3
+        return 124
+        #return int(os.popen('stty size', 'r').read().split()[1]) - 3
 
     @property
     def bar_width(self):
