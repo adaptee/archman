@@ -10,7 +10,7 @@ ARCH=`uname -m`
 
 build: swig
 	python setup.py build
-	cp build/lib.linux-$(ARCH)-2.6/_pyalpmm_raw.so .
+	cp build/lib.linux-$(ARCH)-2.7/_pyalpmm_raw.so .
 
 swig:
 	swig -python -copyctor -Wall pyalpmm_raw/pyalpmm_raw.i
@@ -19,9 +19,9 @@ swig:
 clean:
 	rm -rf build MANIFEST pyalpmm-*.pkg.tar.gz
 	rm -f pyalpmm/*.py{c,~}
-	rm -f *{~,pyc,so} 
+	rm -f *{~,pyc,so}
 	rm -f pyalpmm_raw{.py,/pyalpmm_raw_wrap.c,/pyalpmm_raw.py}
-	rm -rf arch/{release,svn}/{pyalpmm*,src,pkg} 
+	rm -rf arch/{release,svn}/{pyalpmm*,src,pkg}
 
 install:
 	python setup.py install --root $(DESTDIR)
