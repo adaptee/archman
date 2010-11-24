@@ -140,7 +140,9 @@ elif options.query and options.owns:
 
 elif options.query and options.info:
     pkg = session.db_man.get_local_package(args[0])
-    if pkg is None:
+    if not pkg:
+        pkg = session.db_man.get_sync_package(args[0])
+    if not pkg:
         print "[-] Sorry, haven't found a match for: {0}".format(args[0])
         sys.exit()
 
