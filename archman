@@ -1,0 +1,232 @@
+#!/usr/bin/python
+# vim: set fileencoding=utf-8 :
+
+import sys
+
+from pyalpmm import Session, PyALPMMConfiguration, System
+from pyalpmm.tools import FancyPackage
+
+import pyalpmm_raw as p
+
+from cmdline import parser
+options, args = parser.parse_args()
+
+from myevents import ArchmanEvents
+events = ArchmanEvents()
+config = PyALPMMConfiguration(events, options.configfile, cmd_args=options)
+
+# uncomment this to enable logging to /tmp/alpm.log (or set events.logfile manually)
+# events.logfile = config.logfile
+
+session = Session(config)
+
+# global exception catcher func callback
+def exc_cb(type_, val, trace):
+    print "[e] A {0} occured:".format(type_.__name__)
+    print "[e] Looks like a bug, submit /tmp/mmacman_error.log please"
+    from traceback import print_exception
+    from sys import argv
+    with file("/tmp/mmacman_error.log", "w") as fd:
+        fd.write("Error occured!!!\n")
+        fd.write("Command: {0}\n".format(" ".join(argv)))
+        fd.write("Traceback following:\n\n")
+        print_exception(type_, val, trace, file=fd)
+
+        print "[i] Wrote crash info to /tmp/mmacman_error.log"
+    import sys
+    sys.exit(1)
+
+def sig_cb(signal, frame):
+    global system
+    signal_name = {2: "SIGINT", 15: "SIGTERM"}[signal]
+    print
+    print "[e] Got Signal: {0}".format(signal_name)
+    if system.transaction_active:
+        if p.alpm_trans_interrupt() == 0:
+            print "[!] The running transaction was successfully interrupted"
+    print "[!] exiting now..."
+    sys.exit(1)
+
+system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
+#system = System(session)
+
+
+if options.cpc:
+    print "[i] evil option detected"
+    print "[i] deleting cache dirs"
+    import shutil
+    for path in config.cachedirs:
+        shutil.rmtree(path, True)
+        print "[!] deleted: {0}".format(path)
+
+elif options.create_config:
+    print "[i] write default configuration to a file"
+    if len(args) < 2:
+        fn = "pyalpmm.conf" if len(args) == 0 else args[0]
+        print "[i] target file: {0}".format(fn)
+        config.create_default_config(fn)
+        print "[+] finished writing"
+    else:
+        print "[e] wrong argument count, only one (target filename) or none argument allowed"
+
+
+if options.cpc or options.create_config:
+    print "[i] always exiting after an evil option"
+    sys.exit()
+
+#print "[i] You have set the following commandline options:"
+if options.force:
+    print "[i]     Forced transaction (-f)"
+if options.nodeps:
+    print "[i]     Ignoring dependencies (-d)"
+if options.download_only:
+    print "[i]     Download packages only (-w)"
+if options.build_install:
+    print "[i]     Installing the freshly built package (-I)"
+if options.build_edit:
+    print "[i]     Edit the PKGBUILD before makepkg (-e)"
+if not options.build_cleanup:
+    print "[i]     Don't cleanup build {0.build_dir} (--no-cleanup)". \
+          format(config)
+if not options.build_prepare:
+    print "[i]     Do not prepare PackageBuilder (--no-prepare)"
+if not options.recursive_remove:
+    print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
+if not options.transparency:
+    print "[i]     Switched off the AUR transparency (--no-transparency)"
+if not options.confirm:
+    print "[i]     The user will not be asked for confirmation (--no-confirm)"
+    session.config.events.want_user_confirm = False
+
+if options.update:
+    system.update_databases()
+
+# check for all affected options, if there is at least one positional argument
+if len(args) == 0:
+    if (options.query and options.owns) or (options.query and options.info):
+        print "[e] you have to pass one argument to issue a query!"
+        sys.exit()
+    elif options.build:
+        print "[e] you have to pass the name of the package you want to build!"
+        sys.exit()
+    elif options.upgrade or options.remove or \
+         (options.sync and not options.sysupgrade):
+        print "[e] you have to pass at least one package name to process!"
+        sys.exit()
+
+if options.sync and options.search:
+    result = system.search_packages(args[0])
+    for pkg in result:
+        print "[P] {0.repo}/{0.name}-{0.version} ".format(pkg)
+        print "       {0.desc}".format(pkg)
+
+elif options.query and options.groups:
+    print "[+] available groups in repositories and their packagecount:"
+    groups = session.db_man.get_sync_groups()
+    for grp in groups:
+        print "[i] {0} ({1})".format(grp.name, len(grp.pkgs))
+
+elif options.query and options.owns:
+    print "[+] looking for the owner of: '{0}'".format(args[0])
+    filename = args[0].startswith("/") and args[0][1:] or args[0]
+    pkg = system.owner_of_file(filename)
+    if pkg is None:
+        print ("[-] {0} was not found in any known package, \
+               only the local repository can be searched.".format(args[0]))
+        sys.exit()
+
+    print "[+] '{0}' was found in the package: {1.name}-{1.version}".\
+          format(args[0], pkg)
+
+elif options.query and options.info:
+    pkg = session.db_man.get_local_package(args[0])
+    if pkg is None:
+        print "[-] Sorry, haven't found a match for: {0}".format(args[0])
+        sys.exit()
+
+    if options.info:
+        if options.show_files:
+            print "[+] Showing filelist of: {0}-{1}".format(args[0], pkg.version)
+            for fn in pkg.files:
+                print "[F] {0}".format(fn)
+        else:
+            print FancyPackage(pkg)
+
+elif options.query and options.orphan:
+    print "[+] Starting 'orphan' package search"
+
+    orphans = system.get_unneeded_packages()
+    # showing orphans
+    if len(orphans) == 0:
+        print "[+] There were no orphans found on your system!"
+    else:
+        print "[+] I have found the following orphans on your system:"
+        for pkg in orphans:
+            print "    [i] {0.name}-{0.version}".format(pkg)
+
+elif options.query:
+    db = session.db_man
+    print "[+] Listing all installed packages: "
+
+    counter, manually_installed = 0, 0
+    aur_pkgs = set()
+
+    headers = ("AUR", "EXPLICIT", "PACKAGE")
+    headers2 = ("PACKAGE", "INSTALL", "NAME and VERSION")
+    if options.aur:
+        print " {0[0]:<9}| {0[1]:<10}| {0[2]:<20}".format(headers)
+        print " {0[0]:<9}| {0[1]:<10}| {0[2]:<20}".format(headers2)
+        print ("-"*10) + "+" + ("-"*10) + "+" + ("-"*20)
+    else:
+        print " {0[1]:<9}| {0[2]:<20}".format(headers)
+        print " {0[1]:<9}| {0[2]:<20}".format(headers2)
+        print ("-"*10) + "+" + ("-"*20)
+
+    for pkg in db.get_local_packages():
+        counter += 1
+        if pkg.reason == p.PM_PKG_REASON_EXPLICIT:
+            manually_installed += 1
+        reason_sign = "-x-" if pkg.reason == p.PM_PKG_REASON_EXPLICIT else ""
+
+        if options.aur:
+            if not db.get_package(pkg.name, repos=config.repos):
+                aur_pkgs.add(pkg)
+                aur_sign = "-x-"
+            else:
+                aur_sign = ""
+            print "{0:^10}|{1:^10}| {2.name} {2.version}". \
+                  format(aur_sign, reason_sign, pkg)
+        else:
+            print "{0:^10}| {1.name} {1.version}". \
+                  format(reason_sign, pkg)
+
+    print ("-"*10) + "+" + ("-"*10) + "+" + ("-"*20) if options.aur \
+          else ("-"*10) + "+" + ("-"*20)
+
+    print "[i] {0} packages installed!".format(counter)
+    print "[i] {0} packages were installed explicitly".\
+          format(manually_installed)
+
+    if options.aur:
+        regularpkgs = counter - len(aur_pkgs)
+        print "[i] {0} packages from 'regular' repositories".\
+              format(regularpkgs)
+        print "[i] {0} packages from other repositories (AUR)".\
+              format(len(aur_pkgs))
+        print "[+] Listing packages from third-party repositories now:"
+        for pkg in aur_pkgs:
+            print "    [i] {0.name}-{0.version}".format(pkg)
+
+elif options.upgrade:
+    system.upgrade_packages(targets=args)
+elif options.remove:
+    system.remove_packages(targets=args, recursive=options.recursive_remove)
+elif options.build:
+    system.build_packages(targets=args)
+elif options.sync and options.sysupgrade:
+    system.sys_upgrade()
+elif options.sync:
+    system.sync_packages(targets=args)
+else:
+    if not options.update:
+        parser.print_help()
