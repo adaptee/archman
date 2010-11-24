@@ -189,6 +189,13 @@ class DatabaseManager(object):
         """
         return self.search_package(repos=self.sync_dbs.keys(), **kw)
 
+    def search_aur_package(self, **kw):
+        """A shortcut to search the AUR for the given query
+
+        :param kw: the search query
+        """
+        return self.search_package(repos=self.dbs["aur"], **kw)
+
     def get_packages(self, repos=None):
         """Get all packages from all databases, actually returns an iterator
 
