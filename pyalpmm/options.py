@@ -262,6 +262,7 @@ class PyALPMMConfiguration(ConfigMapper):
     recursive_remove = CommandlineItem(1)
     confirm = CommandlineItem(1)
     transparency = CommandlineItem(1)
+    parse_pkgbuild = CommandlineItem(0)
 
     # need this, because the lockfile is not known on class create
     lockfile = property(lambda s: p.alpm_option_get_lockfile())

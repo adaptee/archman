@@ -65,6 +65,9 @@ group.add_option("-o", "--owns", dest="owns", action="store_true",
                  help="Look for package that contains the given file/dir/path")
 group.add_option("-g", "--groups", dest="groups", action="store_true",
                  help="List all groups available in the sync repository")
+group.add_option("-p", "--parse-pkgbuild", dest="parse_pkgbuild", action="store_true",
+                 default="False",
+                 help="obtain package info from available PKGBUILD")
 
 parser.add_option_group(group)
 

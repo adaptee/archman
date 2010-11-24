@@ -19,6 +19,7 @@ import lists as List
 from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType,\
      FancyVersion
 
+from parched import PKGBUILD
 
 class AbstractItem(object):
     """The baseclass for all *Item classes. Transalates Python attribute access
@@ -150,6 +151,30 @@ class AURPackageItem(AbstractItem):
 
         for k,v in dct.items():
             setattr(self, self.__aur_attributes[k], v)
+
+class PkgbuildPackageItem(AbstractItem):
+    """
+        A simple wrapper for class PKGBUILD provided by parched
+    """
+
+    all_attributes = ["name", "arch", "version", "size", "filename", "desc",
+                      "url", "builddate", "installdate", "packager", "md5sum",
+                      "isize", "reason", "licenses", "groups", "depends",
+                      "optdepends", "conflicts", "provides", "deltas",
+                      "replaces", "files", "backup" ]
+
+    non_pacman_attributes = all_attributes + ["repo"]
+
+    #attributes = ["name", "version"]
+
+    def __init__(self, pkgbuild_file):
+        self.init_non_pacman_attributes()
+
+        pkgbuild = PKGBUILD(fileobj=pkgbuild_file)
+
+        for attr in self.all_attributes :
+            setattr(self, attr, getattr(pkgbuild, attr, None))
+
 
 class GroupItem(AbstractItem):
     """Keeps all the information about a group, especially their '.pkgs'"""

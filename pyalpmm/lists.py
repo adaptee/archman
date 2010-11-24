@@ -15,6 +15,7 @@ C function call.
 import os, sys
 import heapq
 from itertools import chain
+from StringIO import StringIO
 import urllib
 import re
 import operator as ops
@@ -216,7 +217,16 @@ class AURPackageList(PackageList):
 
         :param dct: the dictionary which holds all the retrieved package data
         """
-        return Item.AURPackageItem(dct)
+
+        if self.config.parse_pkgbuild :
+            c = self.config
+            url = c.aur_url + c.aur_pkg_dir + dct["Name"] + "/" + \
+                dct["Name"] + "/" + "PKGBUILD"
+
+            fileobj = StringIO( urllib.urlopen(url).read() )
+            return Item.PkgbuildPackageItem(fileobj)
+        else:
+            return Item.AURPackageItem(dct)
 
 class GroupList(LazyList):
     """A list for GroupItems"""
