@@ -92,7 +92,8 @@ if not options.build_prepare:
     print "[i]     Do not prepare PackageBuilder (--no-prepare)"
 if not options.recursive_remove:
     print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
-if not options.aur_support:
+# aur_support has no default value, so should test explicity with False
+if options.aur_support == False:
     print "[i]     Switched off the transparent AUR support (--no-aur-support)"
 if not options.confirm:
     print "[i]     The user will not be asked for confirmation (--no-confirm)"
