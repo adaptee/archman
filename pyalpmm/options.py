@@ -133,8 +133,8 @@ class ConfigMapper(object):
     get a fully populated CustomConfigMapper object already up-to-date with
     your config file.
     """
-    config_items = {}
-    cmdline_items =  {}
+    config_items  = {}
+    cmdline_items = {}
 
     # if strict is True, _all_ config options MUST be set in the config
     strict = False
@@ -167,7 +167,7 @@ class ConfigMapper(object):
         self.read_from_file()
 
         # take commandline options into account, at last!
-        self.handle_cmdline_args(self.cmd_args)
+        self.handle_cmdline_options(self.cmd_args)
 
     def __getitem__(self, key):
         if key in self:
@@ -183,17 +183,6 @@ class ConfigMapper(object):
             yield (k, v)
         for k, v in self.cmdline_items.items():
             yield (k, k)
-
-    def set_cmdline_arg(self, option_name, value):
-        """Directly set a commandline option to 'value'"""
-        self.cmdline_items[option_name].value = value
-
-    def handle_cmdline_args(self, cmdline_args):
-        """Copy the needed data from the cmd_args object to the ConfigItem(s)"""
-        if cmdline_args:
-            for cmd, item in self.cmdline_items.items():
-                if hasattr(cmdline_args, cmd):
-                    self.set_cmdline_arg(cmd, getattr(cmdline_args, cmd))
 
     def read_from_file(self):
         """Read configuration from file into the object attributes"""
@@ -218,6 +207,20 @@ class ConfigMapper(object):
 
         with open(fn, "w") as fd:
             conf_obj.write(fd)
+
+    def handle_cmdline_options(self, cmdline_options):
+        """Copy the needed data from the cmd_args object to the ConfigItem(s)"""
+        if cmdline_options:
+
+            d = cmdline_options.__dict__
+            # filter out uninterested entries.
+            options = { k:v for k,v in d.items() if v != None }
+
+            for option, value in options.items() :
+                if option in self.config_items:
+                    self.config_items[option].value = value
+                elif option in self.cmdline_items:
+                    self.cmdline_items[option].value = value
 
 
 class PyALPMMConfiguration(ConfigMapper):
