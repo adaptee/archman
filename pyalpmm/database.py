@@ -31,9 +31,9 @@ class DatabaseManager(object):
     nicely fit into the methods this class provides, which are mainly to
     search/examine/compare different packages from different repositories.
     """
-    dbs = {}
+    dbs       = {}
     local_dbs = {}
-    sync_dbs = {}
+    sync_dbs  = {}
 
     def __init__(self, events):
         self.events = events

@@ -202,6 +202,8 @@ class AURPackageList(PackageList):
         if isinstance(res, str):
             return []
 
+        res = sorted( res, key = lambda x : x['Name'] )
+
         candidates = [self.create_item(data_dct) for data_dct in res]
 
         out = []
