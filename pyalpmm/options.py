@@ -191,9 +191,10 @@ class ConfigMapper(object):
 
     def handle_cmdline_args(self, cmdline_args):
         """Copy the needed data from the cmd_args object to the ConfigItem(s)"""
-        for cmd, item in self.cmdline_items.items():
-            if cmdline_args and hasattr(cmdline_args, cmd):
-                self.set_cmdline_arg(cmd, getattr(cmdline_args, cmd))
+        if cmdline_args:
+            for cmd, item in self.cmdline_items.items():
+                if hasattr(cmdline_args, cmd):
+                    self.set_cmdline_arg(cmd, getattr(cmdline_args, cmd))
 
     def read_from_file(self):
         """Read configuration from file into the object attributes"""
