@@ -276,12 +276,10 @@ class DatabaseManager(object):
                 )
         repos = self._get_repositories(repos or self.dbs.keys())
 
-        query = {"name__eq": pkgname}
         found = []
         for repo in repos:
-            for pkg in repo.search_package(**query):
+            for pkg in repo.get_package(pkgname):
                 pkg.repo = repo.tree
-                #found = sum((repo.search_package(**query) for repo in repos), [])
                 found.append(pkg)
 
         try:
