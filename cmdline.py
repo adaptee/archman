@@ -66,7 +66,7 @@ group.add_option("-o", "--owns", dest="owns", action="store_true",
 group.add_option("-g", "--groups", dest="groups", action="store_true",
                  help="List all groups available in the sync repository")
 group.add_option("-p", "--parse-pkgbuild", dest="parse_pkgbuild", action="store_true",
-                 default="False",
+                 default=False,
                  help="obtain package info from available PKGBUILD")
 
 parser.add_option_group(group)
@@ -76,7 +76,7 @@ group = OptionGroup(parser, "Remove Actions",
 group.add_option("-R", "--remove", dest="remove", action="store_true",
                  help="Remove the given packages from the system")
 group.add_option("", "--no-recursive", dest="recursive_remove",
-                 default="True", action="store_false",
+                 default=True, action="store_false",
                  help="Do not recursivly remove unneeded dependencies on remove")
 parser.add_option_group(group)
 
@@ -89,10 +89,10 @@ group.add_option("-I", "--install", dest="build_install", action="store_true",
 group.add_option("-e", "--edit", dest="build_edit", action="store_true",
                  help="Edit the PKGBUILD before building")
 group.add_option("", "--no-cleanup", dest="build_cleanup", action="store_false",
-                 default="True",
+                 default=True,
                  help="Don't cleanup (delete) the build dir before")
 group.add_option("", "--no-prepare", dest="build_prepare", action="store_false",
-                 default="True",
+                 default=True,
                  help="Don't prepare (download scripts and sources) the build")
 parser.add_option_group(group)
 
