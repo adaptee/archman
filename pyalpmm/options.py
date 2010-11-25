@@ -92,7 +92,6 @@ class ListConfigItem(ConfigItem):
             yield item
 
     def __getitem__(self, key):
-        print "get key: %s" % key
         return self.value[key]
 
     def __len__(self):
@@ -164,11 +163,11 @@ class ConfigMapper(object):
         self.confobj = RawConfigParser()
         self.confobj.readfp(self.stream)
 
-        # take commandline options into account
-        self.handle_cmdline_args(self.cmd_args)
-
         # actually read the data from the file
         self.read_from_file()
+
+        # take commandline options into account, at last!
+        self.handle_cmdline_args(self.cmd_args)
 
     def __getitem__(self, key):
         if key in self:
@@ -195,7 +194,6 @@ class ConfigMapper(object):
             for cmd, item in self.cmdline_items.items():
                 if hasattr(cmdline_args, cmd):
                     self.set_cmdline_arg(cmd, getattr(cmdline_args, cmd))
-
 
     def read_from_file(self):
         """Read configuration from file into the object attributes"""
@@ -265,6 +263,7 @@ class PyALPMMConfiguration(ConfigMapper):
     confirm = CommandlineItem(1)
     transparency = CommandlineItem(1)
     parse_pkgbuild = CommandlineItem(0)
+
 
     # need this, because the lockfile is not known on class create
     lockfile = property(lambda s: p.alpm_option_get_lockfile())
