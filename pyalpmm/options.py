@@ -370,5 +370,3 @@ class PyALPMMConfiguration(ConfigMapper):
         self.events.DoneReadingConfigFile(filename=(self.configfile))
 
 
-
-

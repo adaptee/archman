@@ -23,11 +23,14 @@ group.add_option("-i", "--info", dest="info", action="store_true",
                  help="Get info for some package. With -Q local and with -S from sync repo")
 group.add_option("", "--no-confirm", dest="confirm", action="store_false",
                  help="Never ask the user for confirmation", default=True)
-# no transparency not implemented ...
-group.add_option("", "--no-transparency", dest="transparency",
-                 action="store_false", default=True,
-                 help="Do not try to transparently handle the AUR " \
-                      "(cannnot be switched off atm, so this option does nil)")
+group.add_option("", "--aur-support", dest="aur_support",
+                 action="store_true",
+                 help="turn on the transparent support for AUR "
+                )
+group.add_option("", "--no-aur-support", dest="aur_support",
+                 action="store_false",
+                 help="turn off the transparent support for AUR "
+                )
 
 parser.add_option_group(group)
 

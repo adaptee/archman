@@ -92,8 +92,8 @@ if not options.build_prepare:
     print "[i]     Do not prepare PackageBuilder (--no-prepare)"
 if not options.recursive_remove:
     print "[i]     Do not recursivly remove dependencies on remove (--no-recu)"
-if not options.transparency:
-    print "[i]     Switched off the AUR transparency (--no-transparency)"
+if not options.aur_support:
+    print "[i]     Switched off the transparent AUR support (--no-aur-support)"
 if not options.confirm:
     print "[i]     The user will not be asked for confirmation (--no-confirm)"
     session.config.events.want_user_confirm = False
