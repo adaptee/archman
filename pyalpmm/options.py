@@ -172,8 +172,8 @@ class ConfigMapper(object):
 
     def __getitem__(self, key):
         if key in self:
-            return self.config_items[key] if key in self.config_items \
-                   else self.cmdline_items[key]
+            return self.cmdline_items[key] if key in self.cmdline_items \
+                   else self.config_items[key]
         raise KeyError("'{0}' is not an existing config key".format(key))
 
     def __contains__(self, key):
@@ -195,6 +195,7 @@ class ConfigMapper(object):
             for cmd, item in self.cmdline_items.items():
                 if hasattr(cmdline_args, cmd):
                     self.set_cmdline_arg(cmd, getattr(cmdline_args, cmd))
+
 
     def read_from_file(self):
         """Read configuration from file into the object attributes"""
