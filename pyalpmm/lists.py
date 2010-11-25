@@ -180,6 +180,7 @@ class AURPackageList(PackageList):
     def __getitem__(self, i):
         return self.create_item({"Name": self.package_database[i],
                                  "Version": "(aur)"})
+
     def search(self, **kw):
         """Search for a package with an RPC call to the AUR repository
         We won't handle any kind of suffix in the kw keys like in PackageList
@@ -188,23 +189,29 @@ class AURPackageList(PackageList):
 
         :param kw: the search query as a dict
         """
-        # the AUR can only be searched for names
+        return self._aur_query( "search", **kw)
+
+    def info(self, **kw):
+        """Similar to search(), but use 'info' method in RPC call.
+           That means querying package with exact name, which should return
+           only one entry, or error.
+
+        :param kw: the search query as a dict
+        """
+        return self._aur_query( "info", **kw)
+
+    def _aur_query(self, method, **kw):
+        """Query AUR and filter replyies ."""
         kw = self._parse_keywords(kw)
+        # the AUR can only(?) be searched for names
+        # FIXME; not exactly; you can search by maintainer, info by numeric id;
         if "name" not in kw:
             return []
 
-        data = {"type": "search", "arg": kw["name"][0]}
-        rpc_url = self.config.aur_url + self.config.rpc_command
-        res = eval(urllib.urlopen(rpc_url % data).read())["results"]
-        out = []
+        query   = { "type": method, "arg": kw["name"][0] }
+        replies = self._aur_rpc(**query)
 
-        # if result is just a string, we got an error
-        if isinstance(res, str):
-            return []
-
-        res = sorted( res, key = lambda x : x['Name'] )
-
-        candidates = [self.create_item(data_dct) for data_dct in res]
+        candidates = [self.create_item(reply) for reply in replies]
 
         out = []
         for pkg in candidates:
@@ -213,6 +220,23 @@ class AURPackageList(PackageList):
                 out.append(pkg)
 
         return out
+
+    def _aur_rpc(self, **query):
+        """Simple wrapper for low level AUR RPC communication."""
+        rpc_url = self.config.aur_url + self.config.rpc_command
+        rpc_url_full = rpc_url % query
+
+        # FIXME; eval() is a bit naive and danngerous; simplejson should
+        # be a better choice.
+        replies = eval( urllib.urlopen(rpc_url_full).read() )["results"]
+
+        # FIXME; the logic for judging failue is not perfect
+        # if result is just a string, we got an error
+        if isinstance(replies, str):
+            return []
+
+        return sorted( replies, key = lambda x : x["Name"] )
+
 
     def create_item(self, dct):
         """Create a AURPackageItem from a given input `dct`

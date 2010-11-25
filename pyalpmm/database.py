@@ -362,6 +362,11 @@ class AbstractDatabase(object):
         """Get all available packages in this database"""
         return PackageList(p.alpm_db_get_pkgcache(self.db))
 
+    def get_package(self, pkgname, raise_ambiguous=False):
+        """Get specific package with exact name in this database"""
+        keywords = {"name__eq": pkgname.lower()}
+        return self.get_packages().search(**keywords)
+
     def get_groups(self):
         """Get all available groups in this database"""
         return GroupList(p.alpm_db_get_grpcache(self.db))
@@ -409,6 +414,12 @@ class AURDatabase(SyncDatabase):
     def get_groups(self):
         """There are no groups in AUR, so just returns an empty list"""
         return []
+
+    def get_package(self, pkgname, raise_ambiguous=False):
+        """efficient way of obtaining info of one specific package on AUR"""
+
+        keywords = {"name__eq": pkgname.lower() }
+        return AURPackageList(self.config).info(**keywords)
 
     def update(self, force=None):
         """There is no need to update because we always send an RPC request"""
