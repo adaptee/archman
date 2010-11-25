@@ -226,6 +226,7 @@ GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
                       "pmdepmod_t"       : int,
                       "int"              : int,
                       "str"              : str,
+                      "list"             : list,
                       "long"             : long,
                       "NoneType"         : lambda a: None }
 
