@@ -316,20 +316,19 @@ class System(object):
         if not_found_targets is None:
             return
 
-        # find repositories for all remaining packages
-        pkg_map = dict((
-            k,
-            self.get_sync_package(k, raise_ambiguous=True)
-        ) for k in not_found_targets)
 
-        if any(v is None for v in pkg_map.values()):
+        pkgs_map = { k:self.get_sync_package(k, raise_ambiguous=True)
+                     for k in not_found_targets
+                   }
+
+        if any(v is None for v in pkgs_map.values()):
             self.events.PackageNotFound(e=NotFoundError(
                 "Following targets could be found in the repos: {0}". \
-                format(",".join(k for k, v in pkg_map.items() if v is None))))
+                format(",".join(k for k, v in pkgs_map.items() if v is None))))
             return
 
-        stack = [pkg for pkg in pkg_map.values() if pkg.repo == "aur"]
-        aur_targets = [k for k, v in pkg_map.items() if v.repo == "aur"]
+        stack = [pkg for pkg in pkgs_map.values() if pkg.repo == "aur"]
+        aur_targets = [k for k, v in pkgs_map.items() if v.repo == "aur"]
         targets = [tar for tar in targets if tar not in aur_targets]
 
         while len(stack) > 0:
@@ -392,7 +391,6 @@ class System(object):
 
     def get_local_packages(self):
         """Get all local installed packages"""
-        #return self.db_man["local"].get_packages()
         return self.db_man.get_local_packages()
 
     def get_unneeded_packages(self):
@@ -403,10 +401,10 @@ class System(object):
 
     def get_local_package(self, pkgname, raise_ambiguous=False):
         """Get the specific local installed package"""
-        return self.db_man.get_local_package(pkgname)
+        return self.db_man.get_local_package(pkgname, raise_ambiguous)
 
     def get_sync_package(self, pkgname, raise_ambiguous=False):
-        return self.db_man.get_sync_package(pkgname)
+        return self.db_man.get_sync_package(pkgname, raise_ambiguous)
 
     def get_local_groups(self):
         """Get all local groups"""
