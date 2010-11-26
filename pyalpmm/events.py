@@ -12,7 +12,6 @@ Every event can simply get a callback function connected by just implementing
 a method which has the exact name of the event.
 """
 
-import sys
 import datetime
 
 from tools import AskUser

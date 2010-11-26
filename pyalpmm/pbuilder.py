@@ -14,9 +14,6 @@ import shutil
 import tarfile
 import urllib
 from StringIO import StringIO
-from subprocess import Popen, PIPE, STDOUT, call
-from time import sleep
-import signal
 
 from item import PackageItem, AURPackageItem
 from events import Events
@@ -82,7 +79,7 @@ class PackageBuilder(object):
         else:
             raise BuildError(("The passed pkg was not an instance of "
                               "(AUR)PackageItem, more a '{0}'").format(
-                              type(pkg_obj).__name__))
+                              type(self.pkg).__name__))
 
         self.events.DoneBuildPrepare()
 
@@ -100,7 +97,7 @@ class PackageBuilder(object):
 
         try:
             os.chdir(self.path)
-        except OSError as e:
+        except OSError :
             raise BuildError("Could not change directory to: {0}".\
                              format(self.path))
 

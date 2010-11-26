@@ -9,10 +9,10 @@ to fancy-fy some of the output made by mmacman/pyalpmm
 """
 
 import time
-import sys, os
+import sys
 import math
 from functools import update_wrapper
-from operator import le, lt, eq, ne, ge, gt
+from operator import le, lt, ge, gt
 import pyalpmm_raw as p
 
 def CachedProperty(method):

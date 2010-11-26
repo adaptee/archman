@@ -214,7 +214,7 @@ class ConfigMapper(object):
 
             d = cmdline_options.__dict__
             # filter out uninterested entries.
-            options = { k:v for k,v in d.items() if v != None }
+            options = { k:v for k,v in d.items() if v is not None }
 
             for option, value in options.items() :
                 if option in self.config_items:

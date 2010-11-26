@@ -94,7 +94,6 @@ class LazyList(object):
 
     def search(self, s):
         """A not so well over-thought search - TODO!"""
-        li = []
         for hay in self:
             if s in hay:
                 yield hay
@@ -154,10 +153,9 @@ class PackageList(LazyList):
 
         :param k: the key-column, which should be used to order the output
         """
-        lst = [(v.get_info(k),v) for v in self]
+        lst = [(v.get_info(k), v) for v in self]
         heapq.heapify(lst)
         pop = heapq.heappop
-        out = []
         while lst:
             yield pop(lst)[1]
 

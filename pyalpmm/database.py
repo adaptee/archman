@@ -42,7 +42,7 @@ class DatabaseManager(object):
         if isinstance(tree, str):
             try:
                 return self.dbs[tree]
-            except KeyError, e:
+            except KeyError:
                 raise DatabaseError(
                     "The requested db-tree '{0}' is not available".format(tree))
         else:
@@ -137,7 +137,7 @@ class DatabaseManager(object):
         """
         repos = self._get_repositories(repos or self.sync_dbs.keys())
         force = force and 1 or 0
-        out, exceptions = [], []
+        exceptions = []
         for repo in repos:
             try:
                 ret = repo.update(force)

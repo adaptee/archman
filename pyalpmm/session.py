@@ -20,10 +20,10 @@ from database import DatabaseManager, LocalDatabase, SyncDatabase, AURDatabase
 from tools import CriticalError, CachedProperty, UserError
 from transaction  import DatabaseUpdateTransaction, AURTransaction, \
      UpgradeTransaction, SysUpgradeTransaction, RemoveTransaction, \
-     SyncTransaction, DatabaseError, NotFoundError, \
+     SyncTransaction, NotFoundError, \
      UnsatisfiedDependenciesError, FileConflictError, NothingToBeDoneError, \
      ConflictingDependenciesError
-from pbuilder import PackageBuilder, BuildError
+from pbuilder import BuildError
 
 class SessionError(CriticalError):
     pass
@@ -368,7 +368,7 @@ class System(object):
                 [self.get_sync_package(name) for name in aur_targets]
             self.events.ProcessingAURPackages(add=aur_pkg_objs)
 
-            c.build_install = True;
+            c.build_install = True
             for aur_target in reversed(aur_targets):
                 self.build_packages([aur_target])
             # reversing the list here is not precisely correct

@@ -29,7 +29,8 @@ import pyalpmm_raw as p
 
 from pyalpmm.database import *
 from pyalpmm.tools import AskUser, CriticalError, UserError
-from pyalpmm.lists import MissList, StringList, DependencyList, FileConflictList
+from pyalpmm.lists import MissList, StringList, DependencyList, \
+FileConflictList, PackageList
 from pyalpmm.item import PackageItem
 from pyalpmm.pbuilder import PackageBuilder, BuildError
 
@@ -248,7 +249,7 @@ class Transaction(object):
                 try:
                     self.add_target(t)
                     toinstall += [t]
-                except TransactionError as e:
+                except TransactionError :
                     out += [t]
 
         # need some check WHY targets could not be added! (fileconflicts...)

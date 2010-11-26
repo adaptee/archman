@@ -9,14 +9,10 @@ smart objects, which map to data, that is held in C space and can be simply
 accessed through an attribute of the object with a quiet lazy evaluation.
 """
 
-import os, sys
-import heapq
-from itertools import chain
-
 import pyalpmm_raw as p
 
 import lists as List
-from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType,\
+from tools import FancySize, FancyDateTime, FancyReason, FancyFileConflictType, \
      FancyVersion
 
 from parched import PKGBUILD
@@ -64,7 +60,7 @@ class AbstractItem(object):
     def __getattr__(self, key):
         try:
             return self.get_info(key)
-        except KeyError, e:
+        except KeyError:
             raise AttributeError(key)
 
     def __eq__(self, other):
@@ -97,7 +93,7 @@ class AbstractItem(object):
             try:
                 func = "alpm_%s_get_%s" % (self.cdesc, key)
                 craw = getattr(p, func)(self.raw_data)
-            except AttributeError as e:
+            except AttributeError :
                 raise KeyError("An instance of %s contains info for: '%s' "
                                "but not: '%s'" % \
                     (self.__class__.__name__, ", ".join(self.attributes), key))
