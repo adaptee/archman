@@ -14,6 +14,7 @@ import shutil
 import tarfile
 import urllib
 from StringIO import StringIO
+from subprocess import call
 
 from item import PackageItem, AURPackageItem
 from events import Events

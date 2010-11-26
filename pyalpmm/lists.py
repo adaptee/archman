@@ -178,6 +178,9 @@ class AURPackageList(PackageList):
     def __getitem__(self, i):
         return self.create_item({"Name": self.package_database[i],
                                  "Version": "(aur)"})
+    # iterating this does not make sense
+    def __iter__(self):
+        yield None
 
     def search(self, **kw):
         """Search for a package with an RPC call to the AUR repository

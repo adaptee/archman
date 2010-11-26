@@ -305,7 +305,7 @@ class System(object):
         # throwing "ReInstallingPackage" Event if target already in sync
         for item in targets:
             pkg = self._is_package_installed(item)
-            if pkg is not False:
+            if pkg :
                 self.events.ReInstallingPackage(pkg=pkg)
 
         # starting transaction, with special-handler for not found targets
@@ -402,11 +402,11 @@ class System(object):
         return set(pkg for pkg in self.get_local_packages() \
                    if self._is_package_unneeded(pkg.name))
 
-    def get_local_package(self, pkgname):
+    def get_local_package(self, pkgname, raise_ambiguous=False):
         """Get the specific local installed package"""
         return self.db_man.get_local_package(pkgname)
 
-    def get_sync_package(self, pkgname):
+    def get_sync_package(self, pkgname, raise_ambiguous=False):
         return self.db_man.get_sync_package(pkgname)
 
     def get_local_groups(self):

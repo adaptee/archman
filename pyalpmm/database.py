@@ -21,7 +21,7 @@ import urllib
 import pyalpmm_raw as p
 from item import PackageItem
 from lists import PackageList, GroupList, AURPackageList
-from tools import CriticalError
+from tools import CriticalError,CachedProperty
 
 class DatabaseError(CriticalError):
     pass
@@ -223,6 +223,7 @@ class DatabaseManager(object):
         :param repos: a list of the repositiory names, which should be used
         """
         repos = self._get_repositories(repos or self.dbs.keys())
+        # FIXME; returning a plain list is more clear
         return chain(*[repo.get_groups() for repo in repos])
 
     def get_local_groups(self):
@@ -237,6 +238,8 @@ class DatabaseManager(object):
     #                                 get_sync_group(name)
 
 
+    # TODO
+    # support more precise lookup, e.g, support 'extra/ktorrent-4.0.4-1'
     def get_package(self, pkgname, repos=None, raise_ambiguous=False):
         """Return package either for sync or for local repo
 
@@ -339,6 +342,27 @@ class DatabaseManager(object):
     # untested
     def set_package_reason(self, pkg, reason_id):
         p.alpm_db_set_pkgreason(self.dbs["local"], pkg.name, reason_id)
+
+    # new-added
+    @CachedProperty
+    def local_packages(self):
+        return self.get_local_packages(self)
+
+    @CachedProperty
+    def sync_packages(self):
+        return self.get_sync_packages(self)
+
+    def is_package_installed(self, pkgname):
+        pkg = self.get_local_package(pkgname)
+        return True if pkg else False
+
+    def is_package_outdated(self, pkgname):
+        local_pkg = self.get_local_package(pkgname)
+        sync_pkg  = self.get_sync_package(pkgname)
+        # FIXME; version is str, may not behave as expected
+        # [Example]  '3.2.9-2'  >  '3.2.10-3'
+        return sync_pkg.version > local_pkg.version
+
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""
