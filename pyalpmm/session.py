@@ -62,6 +62,8 @@ class Session(object):
         if config.aur_support:
             self.db_man.register("aur", AURDatabase(config))
 
+        self.db_man.generate_cache()
+
         self.config.events.DoneInitSession()
 
     def release(self):
@@ -278,8 +280,7 @@ class System(object):
         :param targets: pkgfilenames as a list of str
         """
         for item in targets:
-            pkgname, pkgver, pkg = parse_pkg_filename(item)
-            # FIXME ; better pass 'pkgname-pkgver'
+            pkgname, pkgver, arch = parse_pkg_filename(item)
             pkg = self._is_package_installed(pkgname)
             if pkg:
                 self.events.ReInstallingPackage(pkg=pkg)

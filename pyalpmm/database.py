@@ -380,6 +380,13 @@ class DatabaseManager(object):
     def sync_packages(self):
         return self.get_sync_packages(self)
 
+    def generate_cache(self):
+        "cache result to avoid expensive IO operation"
+        self.local_pkgs_map = { pkg.name : pkg for pkg in self.get_local_packages() }
+        #self.repo_pkgs_map  = { pkg.name : pkg for pkg in self.get_sync_packages()  }
+        #print self.local_pkgs_map.keys()
+        #print len( self.local_pkgs_map.keys() )
+
     def is_package_installed(self, pkgname):
         pkg = self.get_local_package(pkgname)
         return True if pkg else False
