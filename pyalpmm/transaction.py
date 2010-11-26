@@ -10,7 +10,7 @@ and the filesystem.
 In general you work with an *Transaction like this:
 
 with SyncTransaction(session, ["xterm"]) as transobj:
-    transobj.aquire()
+    transobj.acquire()
     # here your transaction is pending, you can get the processed packages:
     for pkg in transobj.get_targets():
         print pkg.name
@@ -82,8 +82,8 @@ class Transaction(object):
         self.targets = targets
         self.__backend_data = None
 
-    def aquire(self):
-        """Aquire a transaction from libalpm by setting all necassary callback
+    def acquire(self):
+        """acquire a transaction from libalpm by setting all necassary callback
         functions and values, then call alpm_trans_init() and pray
         """
         if self.session.config.rights != "root":
@@ -365,9 +365,9 @@ class SysUpgradeTransaction(SyncTransaction):
     """
     trans_type = "sysupgrade"
 
-    def aquire(self):
-        """As we have no targets here, we can prepare() after aquire()"""
-        super(SysUpgradeTransaction, self).aquire()
+    def acquire(self):
+        """As we have no targets here, we can prepare() after acquire()"""
+        super(SysUpgradeTransaction, self).acquire()
         self.prepare()
 
     def prepare(self):

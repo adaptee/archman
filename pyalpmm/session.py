@@ -150,7 +150,7 @@ class System(object):
             self._is_root()
             tobj = tcls(self.session, **kw)
             with tobj:
-                tobj.aquire()
+                tobj.acquire()
                 if not isinstance(tobj, DatabaseUpdateTransaction):
                     targets = tobj.get_targets()
                     self.events.ProcessingPackages(
@@ -281,7 +281,8 @@ class System(object):
 
             pkgname = "-".join(os.path.basename(item).split("-")[:-3])
             pkg = self._is_package_installed(pkgname)
-            if pkg: self.events.ReInstallingPackage(pkg=pkg)
+            if pkg:
+                self.events.ReInstallingPackage(pkg=pkg)
 
         self._handle_transaction(UpgradeTransaction, targets=targets)
 

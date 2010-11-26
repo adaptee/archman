@@ -162,7 +162,7 @@ class PackageList(LazyList):
 class AURPackageList(PackageList):
     """Holds evil AURPackageItem objects.
     This class implements a full blown wrapper to work with AURPackages as
-    easy as with any other "official" package repository. Data is aquired
+    easy as with any other "official" package repository. Data is acquired
     through RPC.
 
     :param config: a :class:`pyalpmm.options.PyALPMMConfiguration` instance
