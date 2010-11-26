@@ -147,7 +147,6 @@ class System(object):
     def _handle_transaction(self, tcls, return_if_not_found=False, **kw):
         self.transaction_active = True
         try:
-            self._is_root()
             tobj = tcls(self.session, **kw)
             with tobj:
                 tobj.acquire()
@@ -295,6 +294,7 @@ class System(object):
         :param targets: pkgnames as a list of str"""
         self._handle_transaction(AURTransaction, targets=targets)
 
+    # FIXME; this method is too long!
     def sync_packages(self, targets):
         """Syncronize local and remote versions of the given targets.
 

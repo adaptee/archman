@@ -35,23 +35,23 @@ from pyalpmm.pbuilder import PackageBuilder, BuildError
 class NotFoundError(CriticalError):
     """Target cannot be added to the transaction"""
     def __init__(self, msg, targets):
-        self.targets = targets
         super(NotFoundError, self).__init__(msg.format(", ".join(targets)))
+        self.targets = targets
 
 class UnsatisfiedDependenciesError(CriticalError):
     """Target cannot be removed, because there are packages depending on it"""
     def __init__(self, msg, pkgs):
-        self.data = pkgs
         super(UnsatisfiedDependenciesError, self).__init__(msg)
+        self.data = pkgs
 
 class FileConflictError(CriticalError):
     """One or more target-package-files conflict with local files"""
     def __init__(self, msg, data):
+        super(FileConflictError, self).__init__(msg)
         self.data = [{
             "type": item.type, "file": item.file, "target_pkg": item.ctarget,
             "local_pkg": item.target if p.PM_FILECONFLICT_FILESYSTEM else None
         } for item in data]
-        super(FileConflictError, self).__init__(msg)
 
 class NothingToBeDoneError(CriticalError):
     """Could not find something to do, aborting"""
@@ -226,6 +226,7 @@ class Transaction(object):
 
         if self.trans_type == "sync":
             grps = db_man.get_sync_groups()
+        # FIXME ; should this be "remove"?
         elif self.trans_type == "local":
             grps = db_man.get_local_groups()
         else:
@@ -237,12 +238,12 @@ class Transaction(object):
                 for grp in grps:
                     for pkg in grp.pkgs:
                         self.add_target(pkg.name)
-                        toinstall += [pkg.name]
+                        #toinstall += [pkg.name]
                     grps_toinstall.add(grp.name)
             else:
                 try:
                     self.add_target(t)
-                    toinstall += [t]
+                    #toinstall += [t]
                 except TransactionError :
                     out += [t]
 
@@ -259,6 +260,7 @@ class Transaction(object):
         """Commit this transaction and let libalpm apply the changes to the
         filesystem and the databases
         """
+        #FIXME; duplicated with same logic within prepare()
         if len(self.targets["add"]) + len(self.targets["remove"]) == 0:
             raise NothingToBeDoneError("Nothing to be done...")
 
