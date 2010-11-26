@@ -224,6 +224,20 @@ class AURPackageList(PackageList):
         rpc_url = self.config.aur_url + self.config.rpc_command
         rpc_url_full = rpc_url % query
 
+        # FIXME; temporary replacement for simplejson
+        results = eval( urllib.urlopen(rpc_url_full).read() )["results"]
+
+        if isinstance(results, str):
+            return []
+        if type(results) == list:
+            return sorted( results, key = lambda x : x["Name"] )
+        else:
+            # always return a list
+            return [results]
+
+
+        # FIXME; simplejson is better than eval, but it always return unicode
+        # which is not compatible with item.attribute framework now
         jsondata = urllib.urlopen(rpc_url_full).read()
         reply    = JSON.loads(jsondata)
 
