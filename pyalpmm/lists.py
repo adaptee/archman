@@ -205,15 +205,11 @@ class AURPackageList(PackageList):
     def _aur_query(self, method, **kw):
         """Query AUR and filter replyies ."""
         kw = self._parse_keywords(kw)
-        # the AUR can only(?) be searched for names
-        # FIXME; not exactly; you can search by maintainer, info by numeric id;
-        if "name" not in kw:
-            return []
 
         query   = { "type": method, "arg": kw["name"][0] }
         results = self._aur_rpc(**query)
 
-        candidates = [self.create_item(reply) for reply in results]
+        candidates = [self.create_item(result) for result in results]
 
         out = []
         for pkg in candidates:
