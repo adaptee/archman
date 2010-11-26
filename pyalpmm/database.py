@@ -23,6 +23,46 @@ from item import PackageItem
 from lists import PackageList, GroupList, AURPackageList
 from tools import CriticalError,CachedProperty
 
+def parse_pkgname(name):
+
+    # leading "/" is invalid
+    if name.startswith('/'):
+        raise DatabaseError(
+            "The passed 'pkgname' started with a '/', which is invalid."
+        )
+
+    # support the notaion of repo/name-version
+    if "/" in name:
+        parts = name.split("/")
+        if len(parts) > 2:
+            raise DatabaseError(
+                "The given `pkgname` was not correctly formated: '{0}'". \
+                format(name)
+            )
+
+        repo    = parts[0]
+        pkgname = parts[1]
+    else:
+        repo    = None
+        pkgname = name
+
+    return repo, pkgname
+
+    # extra support for repo/name-version
+    # FIXME; buggy
+    ## now deal with name and version
+    #parts = non_repo_part.split('-')
+
+    #if len(parts) >= 3 :
+        ## example: ktorrent-4.0.4-1
+        #pkgver  = '-'.join( parts[-2:] )
+        #pkgname = '-'.join( parts[:-2] )
+    #else:
+        ## example: ktorrent
+        #pkgver = ""
+        #pkgname = '-'.join(parts)
+    #return repo, pkgname, pkgver
+
 class DatabaseError(CriticalError):
     pass
 
@@ -259,24 +299,12 @@ class DatabaseManager(object):
                                 there is more than one hit, if False, just
                                 return the first hit (optional)
         """
+        repo, pkgname = parse_pkgname(pkgname)
 
-        # check for leading "/"
-        if pkgname.startswith("/"):
-            raise DatabaseError(
-                "The passed 'pkgname' started with a '/', \
-                this is not a valid package name"
-            )
+        # repo/name overwrite the 'repos' parameter
+        if repo:
+            repos = [repo]
 
-        # check for repository package notation
-        if "/" in pkgname:
-            try:
-                repo, pkgname = pkgname.split("/")
-                repos = [repo]
-            except:
-                raise DatabaseError(
-                    "The given `pkgname` was not correctly formated: '{0}'". \
-                    format(pkgname)
-                )
         repos = self._get_repositories(repos or self.dbs.keys())
 
         found = []
