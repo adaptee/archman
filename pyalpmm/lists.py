@@ -233,7 +233,11 @@ class AURPackageList(PackageList):
         if isinstance(replies, str):
             return []
 
-        return sorted( replies, key = lambda x : x["Name"] )
+        # always return a list
+        if type(replies) == list:
+            return sorted( replies, key = lambda x : x["Name"] )
+        else:
+            return [replies, ]
 
 
     def create_item(self, dct):
