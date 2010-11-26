@@ -270,6 +270,7 @@ class System(object):
 
         self._handle_transaction(RemoveTransaction, targets=all_targets)
 
+
     def upgrade_packages(self, targets):
         """Upgrade the given targets from given path/files
         (``pacman -U <targets>``)
@@ -277,11 +278,8 @@ class System(object):
         :param targets: pkgfilenames as a list of str
         """
         for item in targets:
-            if not os.path.exists(item) or not os.path.isfile(item):
-                raise SystemError("The file: {0} does not exist!".format(item))
-
-            pkgname = "-".join(os.path.basename(item).split("-")[:-3])
-            # FIXME ; logic error; should pass into 'pkgname-version'
+            pkgname, pkgver, pkg = parse_pkg_filename(item)
+            # FIXME ; better pass 'pkgname-pkgver'
             pkg = self._is_package_installed(pkgname)
             if pkg:
                 self.events.ReInstallingPackage(pkg=pkg)
@@ -445,4 +443,23 @@ class System(object):
             if pkg.files and filepath in pkg.files:
                 return pkg
 
+def parse_pkg_filename(filename):
+    """parse the filename of local pkgfile archive"""
+
+    if not os.path.exists(filename) or not os.path.isfile(filename):
+        raise SystemError("The file: {0} does not exist!".format(filename))
+
+    # FIXME; should we be so conservative?
+    if  not filename.endswith(".pkg.tar.xz") and  \
+        not filename.endswith(".pkg.tar.gz") :
+            raise Exception("The file : %s does not use valid extension")
+
+    # good example: kde-meta-kdebase-4.5-2-any.pkg.tar.xz
+    parts = os.path.basename(filename).split('-')
+
+    arch    = parts[-1].split('.')[0]
+    pkgver  = parts[-3] + '-' + parts[-2]
+    pkgname = '-'.join( parts[:-3] )
+
+    return pkgname, pkgver, arch
 
