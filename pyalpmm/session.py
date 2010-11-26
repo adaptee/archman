@@ -154,9 +154,9 @@ class System(object):
                 tobj.acquire()
                 if not isinstance(tobj, DatabaseUpdateTransaction):
                     targets = tobj.get_targets()
-                    self.events.ProcessingPackages(
-                        add=targets["add"], remove=targets["remove"]
-                    )
+                    #self.events.ProcessingPackages(
+                        #add=targets["add"], remove=targets["remove"]
+                    #)
                 tobj.commit()
         except NotRootError as e:
             self.events.NotRoot(e=e)
@@ -318,7 +318,7 @@ class System(object):
             self._handle_transaction(SyncTransaction, targets=repo_targets)
 
         for target in aur_targets:
-            self._handle_transaction(AURTransaction, targets=[target])
+            self._handle_transaction(AURTransaction, target=target)
 
         return
 

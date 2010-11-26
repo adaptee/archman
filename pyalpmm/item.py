@@ -156,7 +156,7 @@ class PkgbuildPackageItem(AbstractItem):
     all_attributes = ["name", "arch", "version", "size", "filename", "desc",
                       "url", "builddate", "installdate", "packager", "md5sum",
                       "isize", "reason", "licenses", "groups", "depends",
-                      "optdepends", "conflicts", "provides", "deltas",
+                      "optdepends", "makedepends", "conflicts", "provides", "deltas",
                       "replaces", "files", "backup" ]
 
     non_pacman_attributes = all_attributes + ["repo"]

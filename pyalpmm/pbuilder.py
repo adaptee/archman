@@ -16,7 +16,7 @@ import urllib
 from StringIO import StringIO
 from subprocess import call
 
-from item import PackageItem, AURPackageItem
+from item import PackageItem, AURPackageItem, PkgbuildPackageItem
 from events import Events
 from tools import CriticalError
 
@@ -67,7 +67,8 @@ class PackageBuilder(object):
                 raise BuildError("Could not successfuly execute 'abs'")
 
             shutil.copytree(abs_path, self.path)
-        elif isinstance(self.pkg, AURPackageItem):
+        elif isinstance(self.pkg, AURPackageItem)  or \
+             isinstance(self.pkg, PkgbuildPackageItem) :
             self.events.StartAURBuildPrepare()
 
             # get and extract

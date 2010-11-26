@@ -396,3 +396,75 @@ class AURTransaction(UpgradeTransaction):
 
         if self.session.config.build_install:
             super(AURTransaction, self).add_target(p.pkgfile_path)
+
+class AURTransaction(object):
+    """The AURTransaction handles all the building, installing of an AUR package
+    """
+    trans_type = "aur"
+
+    def __init__(self, session, target):
+        self.session = session
+        self.events  = self.session.config.events
+        self.target  = target
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.release()
+
+    def acquire(self ):
+        pkg = self.session.db_man.get_aur_package(self.target)
+        if pkg is None:
+            raise DatabaseError(
+                "I haven't found a package with the pkgname: {0} inside the AUR".\
+                format(pkgname)
+            )
+        self.pkg = pkg
+
+        deps = pkg.depends + pkg.makedepends
+
+        deps = [ dep for dep in deps
+                         if not self.session.db_man.is_package_installed(dep)  ]
+
+        pkgs_map = { target:self.db_man.get_repo_package(dep, raise_ambiguous=True)
+                     for dep in deps
+                   }
+
+        self.missing_deps = { }
+        self.missing_deps["repo"] = [ k for k, v in pkgs_map.items() if v     ]
+        self.missing_deps["aur"]  = [ k for k, v in pkgs_map.items() if not v ]
+
+    def prepare(self):
+        "install missing deps from repos or AUR."
+        pass
+
+    def commit(self):
+
+        p = PackageBuilder(self.session, self.pkg)
+        if self.session.config.build_edit:
+            p.edit()
+        if self.session.config.build_cleanup:
+            p.cleanup()
+        if self.session.config.build_prepare:
+            p.prepare()
+        p.build()
+
+        if self.session.config.build_install:
+            self.session._handle_transaction(UpgradeTransaction,
+                                             targets=[p.pkgfile_path] )
+            return
+            #super(AURTransaction, self).add_target(p.pkgfile_path)
+
+    def release(self):
+        pass
+
+    def get_targets(self):
+        return { "add": [self.pkg],
+                 "remove" : [],
+               }
+
+    def add_target(self, pkgname):
+        pass
+
+
