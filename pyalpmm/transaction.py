@@ -325,29 +325,6 @@ class UpgradeTransaction(Transaction):
         if ret == -1:
             self.handle_error(p.get_errno())
 
-class AURTransaction(UpgradeTransaction):
-    """The AURTransaction handles all the building, installing of an AUR package
-    """
-    trans_type = "aur"
-
-    def add_target(self, pkgname):
-        pkg = self.session.db_man.get_sync_package(pkgname)
-        if pkg is None:
-            raise DatabaseError(
-                "I haven't found a file with the pkgname: {0} inside the AUR".\
-                format(pkgname)
-            )
-        p = PackageBuilder(self.session, pkg)
-        if self.session.config.build_edit:
-            p.edit()
-        if self.session.config.build_cleanup:
-            p.cleanup()
-        if self.session.config.build_prepare:
-            p.prepare()
-        p.build()
-
-        if self.session.config.build_install:
-            super(AURTransaction, self).add_target(p.pkgfile_path)
 
 class SysUpgradeTransaction(SyncTransaction):
     """The SysUpgradeTransaction upgrades the whole system with the latest
@@ -395,3 +372,27 @@ class DatabaseUpdateTransaction(SyncTransaction):
             raise TypeError(("The passed databases must be either a list of "
                              "strings or only one string, not: {0}").
                             format(dbs))
+
+class AURTransaction(UpgradeTransaction):
+    """The AURTransaction handles all the building, installing of an AUR package
+    """
+    trans_type = "aur"
+
+    def add_target(self, pkgname):
+        pkg = self.session.db_man.get_sync_package(pkgname)
+        if pkg is None:
+            raise DatabaseError(
+                "I haven't found a file with the pkgname: {0} inside the AUR".\
+                format(pkgname)
+            )
+        p = PackageBuilder(self.session, pkg)
+        if self.session.config.build_edit:
+            p.edit()
+        if self.session.config.build_cleanup:
+            p.cleanup()
+        if self.session.config.build_prepare:
+            p.prepare()
+        p.build()
+
+        if self.session.config.build_install:
+            super(AURTransaction, self).add_target(p.pkgfile_path)
