@@ -295,7 +295,6 @@ class System(object):
 
         :param targets: pkgnames as a list of str
         """
-        db_man = self.db_man
         c = self.session.config
 
         # throwing "ReInstallingPackage" Event if target already in sync
@@ -316,7 +315,7 @@ class System(object):
         # find repositories for all remaining packages
         pkg_map = dict((
             k,
-            db_man.get_sync_package(k, raise_ambiguous=True)
+            self.get_sync_package(k, raise_ambiguous=True)
         ) for k in not_found_targets)
 
         if any(v is None for v in pkg_map.values()):
@@ -365,7 +364,7 @@ class System(object):
 
         if len(aur_targets) > 0:
             aur_pkg_objs = \
-                [db_man.get_sync_package(name) for name in aur_targets]
+                [self.get_sync_package(name) for name in aur_targets]
             self.events.ProcessingAURPackages(add=aur_pkg_objs)
 
             c.build_install = True;
@@ -392,6 +391,12 @@ class System(object):
         #return self.db_man["local"].get_packages()
         return self.db_man.get_local_packages()
 
+    def get_unneeded_packages(self):
+        """Get all packages, which have not been installed explicitly and are
+        not a dependency from some other package."""
+        return set(pkg for pkg in self.get_local_packages() \
+                   if self._is_package_unneeded(pkg.name))
+
     def get_local_package(self, pkgname):
         """Get the specific local installed package"""
         return self.db_man.get_local_package(pkgname)
@@ -399,11 +404,9 @@ class System(object):
     def get_sync_package(self, pkgname):
         return self.db_man.get_sync_package(pkgname)
 
-    def get_unneeded_packages(self):
-        """Get all packages, which have not been installed explicitly and are
-        not a dependency from some other package."""
-        return set(pkg for pkg in self.get_local_packages() \
-                   if self._is_package_unneeded(pkg.name))
+    def get_sync_groups(self):
+        """Get all sync-able groups"""
+        return self.db_man.get_sync_groups()
 
     def search_packages(self, pkgname):
         """Search for a query/pkgname in the repositories. Behave like

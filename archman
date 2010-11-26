@@ -122,7 +122,7 @@ if options.sync and options.search:
 
 elif options.query and options.groups:
     print "[+] available groups in repositories and their packagecount:"
-    groups = system.db_man.get_sync_groups()
+    groups = system.get_sync_groups()
     for grp in groups:
         print "[i] {0} ({1})".format(grp.name, len(grp.pkgs))
 
@@ -167,7 +167,6 @@ elif options.query and options.orphan:
             print "    [i] {0.name}-{0.version}".format(pkg)
 
 elif options.query:
-    db = system.db_man
     print "[+] Listing all installed packages: "
 
     counter, manually_installed = 0, 0
@@ -184,14 +183,14 @@ elif options.query:
         print " {0[1]:<9}| {0[2]:<20}".format(headers2)
         print ("-"*10) + "+" + ("-"*20)
 
-    for pkg in db.get_local_packages():
+    for pkg in system.get_local_packages():
         counter += 1
         if pkg.reason == p.PM_PKG_REASON_EXPLICIT:
             manually_installed += 1
         reason_sign = "-x-" if pkg.reason == p.PM_PKG_REASON_EXPLICIT else ""
 
         if options.aur:
-            if not db.get_package(pkg.name, repos=config.repos):
+            if not system.get_package(pkg.name, repos=config.repos):
                 aur_pkgs.add(pkg)
                 aur_sign = "-x-"
             else:
