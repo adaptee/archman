@@ -110,6 +110,9 @@ class System(object):
         self.events = session.config.events
         self.db_man = session.db_man
 
+        # hack
+        self.session.system = self
+
         self.global_exc_cb = global_exc_cb
         self.global_sig_cb = global_sig_cb
 
@@ -146,7 +149,7 @@ class System(object):
             raise NotRootError("You must be root make these changes!")
         return False
 
-    def _handle_transaction(self, tcls, return_if_not_found=False, **kw):
+    def handle_transaction(self, tcls, return_if_not_found=False, **kw):
         self.transaction_active = True
         try:
             tobj = tcls(self.session, **kw)
@@ -270,7 +273,7 @@ class System(object):
         else:
             all_targets = targets
 
-        self._handle_transaction(RemoveTransaction, targets=all_targets)
+        self.handle_transaction(RemoveTransaction, targets=all_targets)
 
 
     def upgrade_packages(self, targets):
@@ -285,13 +288,13 @@ class System(object):
             if pkg:
                 self.events.ReInstallingPackage(pkg=pkg)
 
-        self._handle_transaction(UpgradeTransaction, targets=targets)
+        self.handle_transaction(UpgradeTransaction, targets=targets)
 
     def build_packages(self, targets):
         """Build the given targets either from AUR or through ABS.
 
         :param targets: pkgnames as a list of str"""
-        self._handle_transaction(AURTransaction, targets=targets)
+        self.handle_transaction(AURTransaction, targets=targets)
 
     # FIXME; this method is too long!
     def sync_packages(self, targets):
@@ -315,10 +318,10 @@ class System(object):
         self.events.ProcessingAURPackages(add=aur_targets)
 
         if repo_targets:
-            self._handle_transaction(SyncTransaction, targets=repo_targets)
+            self.handle_transaction(SyncTransaction, targets=repo_targets)
 
         for target in aur_targets:
-            self._handle_transaction(AURTransaction, target=target)
+            self.handle_transaction(AURTransaction, target=target)
 
         return
 
@@ -333,7 +336,7 @@ class System(object):
 
         ## starting transaction, with special-handler for not found targets
         #not_found_targets = \
-            #self._handle_transaction(SyncTransaction, True, targets=targets)
+            #self.handle_transaction(SyncTransaction, True, targets=targets)
 
         ## if no return, and we reach this point, means no exception was thrown
         ## the transaction was succesfully finished
@@ -386,7 +389,7 @@ class System(object):
                     #targets.append(pkg.name)
 
         #if len(targets) > 0:
-            #self._handle_transaction(SyncTransaction, targets=targets)
+            #self.handle_transaction(SyncTransaction, targets=targets)
 
         #if len(aur_targets) > 0:
             #aur_pkg_objs = \
@@ -407,11 +410,11 @@ class System(object):
 
     def sys_upgrade(self):
         """Upgrade the whole system with the latest available packageversions"""
-        self._handle_transaction(SysUpgradeTransaction)
+        self.handle_transaction(SysUpgradeTransaction)
 
     def update_databases(self):
         """Update the package database indexes"""
-        self._handle_transaction(DatabaseUpdateTransaction)
+        self.handle_transaction(DatabaseUpdateTransaction)
 
 
     def get_local_packages(self):

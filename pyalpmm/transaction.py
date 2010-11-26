@@ -404,7 +404,8 @@ class AURTransaction(object):
 
     def __init__(self, session, target):
         self.session = session
-        self.events  = self.session.config.events
+        self.system  = session.system
+        self.events  = session.config.events
         self.target  = target
 
     def __enter__(self):
@@ -423,29 +424,32 @@ class AURTransaction(object):
         self.pkg = pkg
 
         deps = pkg.depends + pkg.makedepends
+        print "deps: %s" % deps
 
         deps = [ dep for dep in deps
-                         if not self.session.db_man.is_package_installed(dep)  ]
+                 if not self.session.db_man.is_package_installed(dep)  ]
 
-        pkgs_map = { target:self.db_man.get_repo_package(dep, raise_ambiguous=True)
+        pkgs_map = { dep:self.session.db_man.get_repo_package(dep, raise_ambiguous=True)
                      for dep in deps
                    }
 
         self.missing_repo_deps = [ k for k, v in pkgs_map.items() if v     ]
         self.missing_aur_deps  = [ k for k, v in pkgs_map.items() if not v ]
 
+        self.prepare()
+
     def prepare(self):
         "install missing deps from repos or AUR."
 
         # first, install missing deps from repo
-        self.session._handle_transaction(SyncTransaction,
-                                            targets=self.missing_repo_deps )
+        if self.missing_repo_deps:
+            self.system.handle_transaction(SyncTransaction,
+                                           targets=self.missing_repo_deps )
 
         # then, install missing deps from repo
         for dep in self.missing_aur_deps:
-            self.session._handle_transaction(AURTransaction,
+            self.system.handle_transaction(AURTransaction,
                                              target=dep )
-
 
     def commit(self):
 
@@ -459,7 +463,7 @@ class AURTransaction(object):
         p.build()
 
         if self.session.config.build_install:
-            self.session._handle_transaction(UpgradeTransaction,
+            self.system.handle_transaction(UpgradeTransaction,
                                              targets=[p.pkgfile_path] )
 
     def release(self):
