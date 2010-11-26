@@ -2,10 +2,9 @@
 # vim: set fileencoding=utf-8 :
 
 import sys
-import pyalpmm_raw as p
 
 from pyalpmm import Events
-from pyalpmm.tools import ProgressBar, FancySize
+from pyalpmm.tools import ProgressBar, FancySize, AskUser, UserError
 
 class ArchmanEvents(Events):
     def __init__(self):

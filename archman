@@ -22,22 +22,19 @@ session = Session(config)
 
 # global exception catcher func callback
 def exc_cb(type_, val, trace):
+    from traceback import print_exception
     print "[e] A {0} occured:".format(type_.__name__)
     print "[e] Looks like a bug, submit /tmp/mmacman_error.log please"
-    from traceback import print_exception
-    from sys import argv
     with file("/tmp/mmacman_error.log", "w") as fd:
         fd.write("Error occured!!!\n")
-        fd.write("Command: {0}\n".format(" ".join(argv)))
+        fd.write("Command: {0}\n".format(" ".join(sys.argv)))
         fd.write("Traceback following:\n\n")
         print_exception(type_, val, trace, file=fd)
 
         print "[i] Wrote crash info to /tmp/mmacman_error.log"
-    import sys
     sys.exit(1)
 
 def sig_cb(signal, frame):
-    global system
     signal_name = {2: "SIGINT", 15: "SIGTERM"}[signal]
     print
     print "[e] Got Signal: {0}".format(signal_name)
