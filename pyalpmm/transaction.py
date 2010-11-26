@@ -23,8 +23,6 @@ Obviously you can only start a transaction if you are root.
 #  int alpm_trans_interrupt(void); INTERRUPT FOR TRANSACTION FOR SIGNALS
 
 
-import os, sys
-
 import pyalpmm_raw as p
 
 from pyalpmm.database import *
@@ -308,9 +306,6 @@ class SyncTransaction(Transaction):
 class RemoveTransaction(Transaction):
     """Remove the given 'targets' from the system"""
     trans_type = "remove"
-
-    def __init__(self, session, targets=None):
-        super(RemoveTransaction, self).__init__(session, targets=targets)
 
     def add_target(self, target):
         ret = p.alpm_remove_target(target)
