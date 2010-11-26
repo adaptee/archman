@@ -210,9 +210,9 @@ class AURPackageList(PackageList):
             return []
 
         query   = { "type": method, "arg": kw["name"][0] }
-        replies = self._aur_rpc(**query)
+        results = self._aur_rpc(**query)
 
-        candidates = [self.create_item(reply) for reply in replies]
+        candidates = [self.create_item(reply) for reply in results]
 
         out = []
         for pkg in candidates:
@@ -229,18 +229,18 @@ class AURPackageList(PackageList):
 
         # FIXME; eval() is a bit naive and danngerous; simplejson should
         # be a better choice.
-        replies = eval( urllib.urlopen(rpc_url_full).read() )["results"]
+        results = eval( urllib.urlopen(rpc_url_full).read() )["results"]
 
         # FIXME; the logic for judging failue is not perfect
         # if result is just a string, we got an error
-        if isinstance(replies, str):
+        if isinstance(results, str):
             return []
 
-        # always return a list
-        if type(replies) == list:
-            return sorted( replies, key = lambda x : x["Name"] )
+        if type(results) == list:
+            return sorted( results, key = lambda x : x["Name"] )
         else:
-            return [replies, ]
+            # always return a list
+            return [results, ]
 
 
     def create_item(self, dct):
