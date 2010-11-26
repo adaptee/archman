@@ -431,13 +431,21 @@ class AURTransaction(object):
                      for dep in deps
                    }
 
-        self.missing_deps = { }
-        self.missing_deps["repo"] = [ k for k, v in pkgs_map.items() if v     ]
-        self.missing_deps["aur"]  = [ k for k, v in pkgs_map.items() if not v ]
+        self.missing_repo_deps = [ k for k, v in pkgs_map.items() if v     ]
+        self.missing_aur_deps  = [ k for k, v in pkgs_map.items() if not v ]
 
     def prepare(self):
         "install missing deps from repos or AUR."
-        pass
+
+        # first, install missing deps from repo
+        self.session._handle_transaction(SyncTransaction,
+                                            targets=self.missing_repo_deps )
+
+        # then, install missing deps from repo
+        for dep in self.missing_aur_deps:
+            self.session._handle_transaction(AURTransaction,
+                                             target=dep )
+
 
     def commit(self):
 
@@ -453,14 +461,12 @@ class AURTransaction(object):
         if self.session.config.build_install:
             self.session._handle_transaction(UpgradeTransaction,
                                              targets=[p.pkgfile_path] )
-            return
-            #super(AURTransaction, self).add_target(p.pkgfile_path)
 
     def release(self):
         pass
 
     def get_targets(self):
-        return { "add": [self.pkg],
+        return { "add"    : [self.pkg],
                  "remove" : [],
                }
 
