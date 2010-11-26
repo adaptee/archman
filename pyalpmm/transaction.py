@@ -108,10 +108,6 @@ class Transaction(object):
                 raise TransactionError("The local database is locked")
             raise TransactionError("Could not initialize the transaction")
 
-        # list of packages and groups
-        self.pkg_search_list = self.session.db_man.get_packages()
-        self.grp_search_list = self.session.db_man.get_groups()
-
         self.events.DoneTransactionInit()
 
         # if targets were directly passed at __init__ set them and .prepare()
@@ -315,9 +311,6 @@ class RemoveTransaction(Transaction):
 
     def __init__(self, session, targets=None):
         super(RemoveTransaction, self).__init__(session, targets=targets)
-
-        self.pkg_search_list = self.session.db_man["local"].get_packages()
-        self.grp_search_list = self.session.db_man["local"].get_groups()
 
     def add_target(self, target):
         ret = p.alpm_remove_target(target)
