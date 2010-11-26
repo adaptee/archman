@@ -206,7 +206,7 @@ class FancyOutput(object):
 class FancySize(FancyOutput):
     """Nicely format filesizes in B, kB, MB and GB suffixes"""
 
-    suffixes = {"B":1. ,"kB": 1024., "MB": 1024*1024., "GB": 1024*1024*1024.}
+    suffixes = {"B":1. , "kB": 1024., "MB": 1024*1024., "GB": 1024*1024*1024.}
 
     def __init__(self, bytes, force_suffix=None):
         self.raw = b = self.out = long(bytes)

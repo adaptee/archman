@@ -233,8 +233,8 @@ class PyALPMMConfiguration(ConfigMapper):
     noupgrades = ListConfigItem("general")
     noextracts = ListConfigItem("general")
     cachedirs = ListConfigItem("general", ["/var/cache/pacman/pkg/"])
-    architecture = StringConfigItem("general", "i686");
-    pkg_suffix = StringConfigItem("general", "tar.xz");
+    architecture = StringConfigItem("general", "i686")
+    pkg_suffix = StringConfigItem("general", "tar.xz")
 
     local_db_path = StringConfigItem("paths", "/var/lib/pacman")
     rootpath = StringConfigItem("paths", "/")
@@ -328,7 +328,7 @@ class PyALPMMConfiguration(ConfigMapper):
         o += "\n"
         o += "Showing all Commandline options:\n"
         o += "--------------------------------\n"
-        for k,v in self.cmdline_items.items():
+        for k, v in self.cmdline_items.items():
             o += "{0:20} = {1}\n".format(k, v)
 
         return o

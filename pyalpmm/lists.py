@@ -85,7 +85,7 @@ class LazyList(object):
             return p.alpm_list_nth(self.raw_list, i)
         raise KeyError("Can only get item with an integer index")
 
-    def create_item(self, item):
+    def create_item(self, _):
         """Create one *Item of the correct type for this list and ctype"""
         return Item.AbstractItem()
 
@@ -173,12 +173,13 @@ class AURPackageList(PackageList):
     def __init__(self, config):
         self.config = config
 
-    def __len__(self):
-        return len(self.package_database)
+    #def __len__(self):
+        #return len(self.package_database)
 
-    def __getitem__(self, i):
-        return self.create_item({"Name": self.package_database[i],
-                                 "Version": "(aur)"})
+    #def __getitem__(self, i):
+        #return self.create_item({"Name": self.package_database[i],
+                                 #"Version": "(aur)"})
+
     # iterating this does not make sense
     def __iter__(self):
         yield None

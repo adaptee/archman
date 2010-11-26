@@ -12,16 +12,11 @@ API.
 
 """
 
-from time import time
 from itertools import chain
-import re
-import os
-import urllib
 
 import pyalpmm_raw as p
-from item import PackageItem
 from lists import PackageList, GroupList, AURPackageList
-from tools import CriticalError,CachedProperty
+from tools import CriticalError, CachedProperty
 
 def parse_pkgname(name):
 
@@ -374,11 +369,11 @@ class DatabaseManager(object):
     # new-added
     @CachedProperty
     def local_packages(self):
-        return self.get_local_packages(self)
+        return self.get_local_packages()
 
     @CachedProperty
     def sync_packages(self):
-        return self.get_sync_packages(self)
+        return self.get_sync_packages()
 
     def generate_cache(self):
         "cache result to avoid expensive IO operation"

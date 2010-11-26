@@ -12,7 +12,6 @@ DatabaseManager instance as 'db_man'.
 """
 
 import os, sys
-import urllib
 
 import pyalpmm_raw as p
 
@@ -155,8 +154,8 @@ class System(object):
             tobj = tcls(self.session, **kw)
             with tobj:
                 tobj.acquire()
-                if not isinstance(tobj, DatabaseUpdateTransaction):
-                    targets = tobj.get_targets()
+                #if not isinstance(tobj, DatabaseUpdateTransaction):
+                    #targets = tobj.get_targets()
                     #self.events.ProcessingPackages(
                         #add=targets["add"], remove=targets["remove"]
                     #)
@@ -479,7 +478,7 @@ def parse_pkg_filename(filename):
     # FIXME; should we be so conservative?
     if  not filename.endswith(".pkg.tar.xz") and  \
         not filename.endswith(".pkg.tar.gz") :
-            raise Exception("The file : %s does not use valid extension")
+        raise Exception("The file : %s does not use valid extension")
 
     # good example: kde-meta-kdebase-4.5-2-any.pkg.tar.xz
     parts = os.path.basename(filename).split('-')

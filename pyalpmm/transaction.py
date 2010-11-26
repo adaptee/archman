@@ -26,8 +26,8 @@ Obviously you can only start a transaction if you are root.
 import pyalpmm_raw as p
 
 from pyalpmm.database import *
-from pyalpmm.tools import AskUser, CriticalError, UserError
-from pyalpmm.lists import MissList, StringList, DependencyList, \
+from pyalpmm.tools import AskUser, CriticalError
+from pyalpmm.lists import MissList, \
 FileConflictList, PackageList
 from pyalpmm.item import PackageItem
 from pyalpmm.pbuilder import PackageBuilder, BuildError
@@ -419,7 +419,7 @@ class AURTransaction(object):
         if pkg is None:
             raise DatabaseError(
                 "I haven't found a package with the pkgname: {0} inside the AUR".\
-                format(pkgname)
+                format(self.target)
             )
         self.pkg = pkg
 
@@ -453,18 +453,18 @@ class AURTransaction(object):
 
     def commit(self):
 
-        p = PackageBuilder(self.session, self.pkg)
+        pb = PackageBuilder(self.session, self.pkg)
         if self.session.config.build_edit:
-            p.edit()
+            pb.edit()
         if self.session.config.build_cleanup:
-            p.cleanup()
+            pb.cleanup()
         if self.session.config.build_prepare:
-            p.prepare()
-        p.build()
+            pb.prepare()
+        pb.build()
 
         if self.session.config.build_install:
             self.system.handle_transaction(UpgradeTransaction,
-                                             targets=[p.pkgfile_path] )
+                                             targets=[pb.pkgfile_path] )
 
     def release(self):
         pass

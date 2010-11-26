@@ -233,7 +233,7 @@ class PKGBUILD(Package):
             fileobj.close()
 
     def _handle_assign(self, token):
-        var, equals, value = token.strip().partition('=')
+        var, _ , value = token.strip().partition('=')
         # Is it an array?
         if value[0] == '(' and value[-1] == ')':
             self._symbols[var] = self._clean_array(value)

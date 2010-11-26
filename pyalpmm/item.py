@@ -103,7 +103,7 @@ class AbstractItem(object):
         # (the keys in GLOBAL_TYPE_MAP are the c-types used in the library)
         try:
             return self.local_key_map[key](craw)
-        except KeyError as e:
+        except KeyError :
             return GLOBAL_TYPE_MAP[craw.__class__.__name__](craw)
 
 
@@ -145,7 +145,7 @@ class AURPackageItem(AbstractItem):
     def __init__(self, dct):
         self.init_non_pacman_attributes()
 
-        for k,v in dct.items():
+        for k, v in dct.items():
             setattr(self, self.__aur_attributes[k], v)
 
 class PkgbuildPackageItem(AbstractItem):

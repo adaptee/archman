@@ -17,7 +17,6 @@ from StringIO import StringIO
 from subprocess import call
 
 from item import PackageItem, AURPackageItem, PkgbuildPackageItem
-from events import Events
 from tools import CriticalError
 
 class BuildError(CriticalError):
@@ -74,7 +73,7 @@ class PackageBuilder(object):
             # get and extract
             url = c.aur_url + c.aur_pkg_dir + self.pkg.name + "/" + \
                 self.pkg.name + ".tar.gz"
-            # we hold the whole thing in RAM, hmm FIXME
+            # we hold the whole thing in RAM, hmm
             to = tarfile.open(fileobj=StringIO(urllib.urlopen(url).read()))
             to.extractall(os.path.dirname(self.path))
             to.close()
