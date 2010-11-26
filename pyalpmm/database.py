@@ -403,7 +403,7 @@ class DatabaseManager(object):
 
         repos = self.sync_dbs.keys()
 
-        if "aur" in keys:
+        if "aur" in repos:
             repos.remove( "aur")
 
         return self.get_package(

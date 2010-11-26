@@ -151,8 +151,8 @@ class ArchmanEvents(Events):
 
     def ProcessingAURPackages(self, **kw):
         print "[i] Building the following AUR packages now!"
-        for pkg in kw["add"]:
-            print "    [i] {0}".format(pkg.name)
+        for pkgname in kw["add"]:
+            print "    [i] {0}".format(pkgname)
 
         print
 

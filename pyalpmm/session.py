@@ -299,9 +299,33 @@ class System(object):
 
         :param targets: pkgnames as a list of str
         """
-        c = self.session.config
 
-        # throwing "ReInstallingPackage" Event if target already in sync
+        pkgs_map = { target:self.db_man.get_repo_package(target, raise_ambiguous=True)
+                     for target in targets
+                   }
+
+        repo_targets = [ k for k, v in pkgs_map.items() if v     ]
+        aur_targets  = [ k for k, v in pkgs_map.items() if not v ]
+
+        for item in repo_targets:
+            pkg = self._is_package_installed(item)
+            if pkg :
+                self.events.ReInstallingPackage(pkg=pkg)
+
+        self.events.ProcessingAURPackages(add=aur_targets)
+
+        if repo_targets:
+            self._handle_transaction(SyncTransaction, targets=repo_targets)
+
+        for target in aur_targets:
+            self._handle_transaction(AURTransaction, targets=[target])
+
+        return
+
+
+        #c = self.session.config
+
+        ##throwing "ReInstallingPackage" Event if target already in sync
         #for item in targets:
             #pkg = self._is_package_installed(item)
             #if pkg :
@@ -332,65 +356,54 @@ class System(object):
         #aur_targets = [k for k, v in pkgs_map.items() if v.repo == "aur"]
         #targets = [tar for tar in targets if tar not in aur_targets]
 
-        pkgs_map = { target:self.db_man.get_repo_package(target, raise_ambiguous=True)
-                     for target in targets
-                   }
+        #while len(stack) > 0:
+            #pkg = stack.pop()
+            #url = c.aur_url + c.aur_pkg_dir + pkg.name + "/" + pkg.name + \
+                #"/" +"PKGBUILD"
+            #deps = []
+            #for line in urllib.urlopen(url).read().split("\n"):
+                #if "depends" in line.lower() or "makedepends" in line.lower():
+                    #deps.extend(line[line.find("(")+1:line.find(")")].split())
 
-        repo_targets = [ k for k, v in pkgs_map.items() if v     ]
-        aur_targets =  [ k for k, v in pkgs_map.items() if not v ]
+            ## IGNORING VERSIONS HERE !!! FIXME!!!!!!!!!
+            #for dep in deps:
+                #dep = dep.strip("'")
+                #if dep.find("<") != -1: dep = dep[:dep.find("<")]
+                #elif dep.find("==") != -1: dep = dep[:dep.find("==")]
+                #elif dep.find(">") != -1: dep = dep[:dep.find(">")]
 
-        print pkgs_map.items()
-        print repo_targets
-        print aur_targets
+                #if dep in targets or self.get_local_package(dep):
+                    #continue
 
-        while len(stack) > 0:
-            pkg = stack.pop()
-            url = c.aur_url + c.aur_pkg_dir + pkg.name + "/" + pkg.name + \
-                "/" +"PKGBUILD"
-            deps = []
-            for line in urllib.urlopen(url).read().split("\n"):
-                if "depends" in line.lower() or "makedepends" in line.lower():
-                    deps.extend(line[line.find("(")+1:line.find(")")].split())
+                #pkg = self.get_sync_package(dep)
+                #if pkg is None:
+                    #raise SystemError(
+                        #"Could not find the package anywhere: {0}".format(dep))
+                #elif pkg.repo == "aur":
+                    #stack.append(pkg)
+                    #aur_targets.append(pkg.name)
+                #else:
+                    #targets.append(pkg.name)
 
-            # IGNORING VERSIONS HERE !!! FIXME!!!!!!!!!
-            for dep in deps:
-                dep = dep.strip("'")
-                if dep.find("<") != -1: dep = dep[:dep.find("<")]
-                elif dep.find("==") != -1: dep = dep[:dep.find("==")]
-                elif dep.find(">") != -1: dep = dep[:dep.find(">")]
+        #if len(targets) > 0:
+            #self._handle_transaction(SyncTransaction, targets=targets)
 
-                if dep in targets or self.get_local_package(dep):
-                    continue
+        #if len(aur_targets) > 0:
+            #aur_pkg_objs = \
+                #[self.get_sync_package(name) for name in aur_targets]
+            #self.events.ProcessingAURPackages(add=aur_pkg_objs)
 
-                pkg = self.get_sync_package(dep)
-                if pkg is None:
-                    raise SystemError(
-                        "Could not find the package anywhere: {0}".format(dep))
-                elif pkg.repo == "aur":
-                    stack.append(pkg)
-                    aur_targets.append(pkg.name)
-                else:
-                    targets.append(pkg.name)
+            #c.build_install = True
+            #for aur_target in reversed(aur_targets):
+                #self.build_packages([aur_target])
+            ## reversing the list here is not precisely correct
+            ## (no problems yet, but who knows) WRONG - there are problems:
+            ## we have to build one package after another to make sure
+            ## the dependencies are fullfilled, a dependency map would bring
+            ## the luxury of making "bundles" of un-dependend packages!
+            ## TODO: building a dependency map here
 
-        if len(targets) > 0:
-            self.events.StartPreAURTransaction(
-                targets=targets, aur_targets=aur_targets)
-            self._handle_transaction(SyncTransaction, targets=targets)
 
-        if len(aur_targets) > 0:
-            aur_pkg_objs = \
-                [self.get_sync_package(name) for name in aur_targets]
-            self.events.ProcessingAURPackages(add=aur_pkg_objs)
-
-            c.build_install = True
-            for aur_target in reversed(aur_targets):
-                self.build_packages([aur_target])
-            # reversing the list here is not precisely correct
-            # (no problems yet, but who knows) WRONG - there are problems:
-            # we have to build one package after another to make sure
-            # the dependencies are fullfilled, a dependency map would bring
-            # the luxury of making "bundles" of un-dependend packages!
-            # TODO: building a dependency map here
 
     def sys_upgrade(self):
         """Upgrade the whole system with the latest available packageversions"""
