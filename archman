@@ -48,7 +48,6 @@ def sig_cb(signal, frame):
     sys.exit(1)
 
 system = System(session, global_exc_cb=exc_cb, global_sig_cb=sig_cb)
-#system = System(session)
 
 
 if options.cpc:
@@ -97,7 +96,7 @@ if options.aur_support == False:
     print "[i]     Switched off the transparent AUR support (--no-aur-support)"
 if not options.confirm:
     print "[i]     The user will not be asked for confirmation (--no-confirm)"
-    session.config.events.want_user_confirm = False
+    system.config.events.want_user_confirm = False
 
 if options.update:
     system.update_databases()
@@ -123,7 +122,7 @@ if options.sync and options.search:
 
 elif options.query and options.groups:
     print "[+] available groups in repositories and their packagecount:"
-    groups = session.db_man.get_sync_groups()
+    groups = system.db_man.get_sync_groups()
     for grp in groups:
         print "[i] {0} ({1})".format(grp.name, len(grp.pkgs))
 
@@ -140,9 +139,9 @@ elif options.query and options.owns:
           format(args[0], pkg)
 
 elif options.query and options.info:
-    pkg = session.db_man.get_local_package(args[0])
+    pkg = system.get_local_package(args[0])
     if not pkg:
-        pkg = session.db_man.get_sync_package(args[0])
+        pkg = system.get_sync_package(args[0])
     if not pkg:
         print "[-] Sorry, haven't found a match for: {0}".format(args[0])
         sys.exit()
@@ -168,7 +167,7 @@ elif options.query and options.orphan:
             print "    [i] {0.name}-{0.version}".format(pkg)
 
 elif options.query:
-    db = session.db_man
+    db = system.db_man
     print "[+] Listing all installed packages: "
 
     counter, manually_installed = 0, 0

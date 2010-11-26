@@ -131,7 +131,7 @@ class System(object):
     @CachedProperty
     def dependency_map(self):
         dm = {}
-        for pkg in self.db_man.get_local_packages():
+        for pkg in self.get_local_packages():
             for dep in pkg.depends:
                 dm.setdefault(dep.name, []).append(pkg.name)
         return dm
@@ -182,8 +182,8 @@ class System(object):
         """Check if the given package defined by `pkgname` is
         installed and up to date
         """
-        loc_pkg = self.db_man.get_local_package(pkgname)
-        syn_pkg = self.db_man.get_sync_package(pkgname)
+        loc_pkg = self.get_local_package(pkgname)
+        syn_pkg = self.get_sync_package(pkgname)
         if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
             return loc_pkg
         return False
@@ -197,7 +197,7 @@ class System(object):
 
         """
         exclude_packages = set(exclude_packages or set())
-        pkg = self.db_man.get_local_package(pkgname)
+        pkg = self.get_local_package(pkgname)
         if pkg is None:
             return True
 
@@ -232,13 +232,12 @@ class System(object):
 
         :param targets: pkgnames as a list of str
         """
-        db_man = self.db_man
 
         if recursive:
             # collect dependencies of the target packages
             deps = set()
             for pkgname in targets:
-                pkg = db_man.get_local_package(pkgname)
+                pkg = self.get_local_package(pkgname)
                 if pkg is None:
                     continue
                 deps.update(dep.name for dep in pkg.depends)
@@ -250,7 +249,7 @@ class System(object):
             while len(deps) > 0:
                 dep = deps.pop()
                 if self._is_package_unneeded(dep, targets):
-                    pkg = db_man.get_local_package(dep)
+                    pkg = self.get_local_package(dep)
 
                     if not pkg:
                         print "[-] The dependency: {0} is not installed".\
@@ -346,10 +345,10 @@ class System(object):
                 elif dep.find("==") != -1: dep = dep[:dep.find("==")]
                 elif dep.find(">") != -1: dep = dep[:dep.find(">")]
 
-                if dep in targets or self.db_man.get_local_package(dep):
+                if dep in targets or self.get_local_package(dep):
                     continue
 
-                pkg = self.db_man.get_sync_package(dep)
+                pkg = self.get_sync_package(dep)
                 if pkg is None:
                     raise SystemError(
                         "Could not find the package anywhere: {0}".format(dep))
@@ -387,14 +386,23 @@ class System(object):
         """Update the package database indexes"""
         self._handle_transaction(DatabaseUpdateTransaction)
 
+
     def get_local_packages(self):
         """Get all local installed packages"""
-        return self.db_man["local"].get_packages()
+        #return self.db_man["local"].get_packages()
+        return self.db_man.get_local_packages()
+
+    def get_local_package(self, pkgname):
+        """Get the specific local installed package"""
+        return self.db_man.get_local_package(pkgname)
+
+    def get_sync_package(self, pkgname):
+        return self.db_man.get_sync_package(pkgname)
 
     def get_unneeded_packages(self):
         """Get all packages, which have not been installed explicitly and are
         not a dependency from some other package."""
-        return set(pkg for pkg in self.db_man.get_local_packages() \
+        return set(pkg for pkg in self.get_local_packages() \
                    if self._is_package_unneeded(pkg.name))
 
     def search_packages(self, pkgname):
