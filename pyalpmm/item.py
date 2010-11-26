@@ -224,6 +224,7 @@ GLOBAL_TYPE_MAP   = { "pmgrp_t"          : GroupItem,
                       "str"              : str,
                       "list"             : list,
                       "long"             : long,
+                      "unicode"          : unicode,
                       "NoneType"         : lambda a: None }
 
 

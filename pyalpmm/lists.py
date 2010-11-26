@@ -19,6 +19,7 @@ from StringIO import StringIO
 import urllib
 import re
 import operator as ops
+import simplejson as JSON
 
 import pyalpmm_raw as p
 
@@ -227,20 +228,20 @@ class AURPackageList(PackageList):
         rpc_url = self.config.aur_url + self.config.rpc_command
         rpc_url_full = rpc_url % query
 
-        # FIXME; eval() is a bit naive and danngerous; simplejson should
-        # be a better choice.
-        results = eval( urllib.urlopen(rpc_url_full).read() )["results"]
+        jsondata = urllib.urlopen(rpc_url_full).read()
+        reply    = JSON.loads(jsondata)
 
-        # FIXME; the logic for judging failue is not perfect
-        # if result is just a string, we got an error
-        if isinstance(results, str):
-            return []
+        if reply["type"] == "error" :
+            # alwasy return a list
+            return [ ]
+
+        results = reply["results"]
 
         if type(results) == list:
             return sorted( results, key = lambda x : x["Name"] )
         else:
             # always return a list
-            return [results, ]
+            return [results]
 
 
     def create_item(self, dct):
