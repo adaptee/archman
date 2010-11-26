@@ -45,6 +45,8 @@ class Session(object):
         p.alpm_option_set_root(config.rootpath)
         p.alpm_option_set_arch(config.architecture)
 
+        self.apply_config()
+
         # set up and register databases
         if p.alpm_option_set_dbpath(config.local_db_path) == -1:
             raise SessionError("Could not open the database path: %s" % \
@@ -53,13 +55,12 @@ class Session(object):
         self.db_man = DatabaseManager(config.events)
 
         self.db_man.register("local", LocalDatabase())
+
         for repo, url in config.available_repositories.items():
             self.db_man.register(repo, SyncDatabase(repo, url))
 
         if config.aur_support:
             self.db_man.register("aur", AURDatabase(config))
-
-        self.apply_config()
 
         self.config.events.DoneInitSession()
 
@@ -182,10 +183,10 @@ class System(object):
         """Check if the given package defined by `pkgname` is
         installed and up to date
         """
-        loc_pkg = self.get_local_package(pkgname)
-        syn_pkg = self.get_sync_package(pkgname)
-        if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
-            return loc_pkg
+        local_pkg = self.get_local_package(pkgname)
+        sync_pkg = self.get_sync_package(pkgname)
+        if local_pkg and sync_pkg and local_pkg.version == sync_pkg.version:
+            return local_pkg
         return False
 
     def _is_package_unneeded(self, pkgname, exclude_packages=None):
@@ -403,6 +404,10 @@ class System(object):
 
     def get_sync_package(self, pkgname):
         return self.db_man.get_sync_package(pkgname)
+
+    def get_local_groups(self):
+        """Get all local groups"""
+        return self.db_man.get_local_groups()
 
     def get_sync_groups(self):
         """Get all sync-able groups"""
