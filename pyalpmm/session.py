@@ -105,6 +105,7 @@ class System(object):
         self.session = session
         self.config = session.config
         self.events = session.config.events
+        self.db_man = session.db_man
 
         self.global_exc_cb = global_exc_cb
         self.global_sig_cb = global_sig_cb
@@ -130,7 +131,7 @@ class System(object):
     @CachedProperty
     def dependency_map(self):
         dm = {}
-        for pkg in self.session.db_man.get_local_packages():
+        for pkg in self.db_man.get_local_packages():
             for dep in pkg.depends:
                 dm.setdefault(dep.name, []).append(pkg.name)
         return dm
@@ -181,8 +182,8 @@ class System(object):
         """Check if the given package defined by `pkgname` is
         installed and up to date
         """
-        loc_pkg = self.session.db_man.get_local_package(pkgname)
-        syn_pkg = self.session.db_man.get_sync_package(pkgname)
+        loc_pkg = self.db_man.get_local_package(pkgname)
+        syn_pkg = self.db_man.get_sync_package(pkgname)
         if loc_pkg and syn_pkg and loc_pkg.version == syn_pkg.version:
             return loc_pkg
         return False
@@ -196,7 +197,7 @@ class System(object):
 
         """
         exclude_packages = set(exclude_packages or set())
-        pkg = self.session.db_man.get_local_package(pkgname)
+        pkg = self.db_man.get_local_package(pkgname)
         if pkg is None:
             return True
 
@@ -231,13 +232,13 @@ class System(object):
 
         :param targets: pkgnames as a list of str
         """
-        db = self.session.db_man
+        db_man = self.db_man
 
         if recursive:
             # collect dependencies of the target packages
             deps = set()
             for pkgname in targets:
-                pkg = db.get_local_package(pkgname)
+                pkg = db_man.get_local_package(pkgname)
                 if pkg is None:
                     continue
                 deps.update(dep.name for dep in pkg.depends)
@@ -249,7 +250,7 @@ class System(object):
             while len(deps) > 0:
                 dep = deps.pop()
                 if self._is_package_unneeded(dep, targets):
-                    pkg = db.get_local_package(dep)
+                    pkg = db_man.get_local_package(dep)
 
                     if not pkg:
                         print "[-] The dependency: {0} is not installed".\
@@ -295,7 +296,7 @@ class System(object):
 
         :param targets: pkgnames as a list of str
         """
-        db_man = self.session.db_man
+        db_man = self.db_man
         c = self.session.config
 
         # throwing "ReInstallingPackage" Event if target already in sync
@@ -345,10 +346,10 @@ class System(object):
                 elif dep.find("==") != -1: dep = dep[:dep.find("==")]
                 elif dep.find(">") != -1: dep = dep[:dep.find(">")]
 
-                if dep in targets or self.session.db_man.get_local_package(dep):
+                if dep in targets or self.db_man.get_local_package(dep):
                     continue
 
-                pkg = self.session.db_man.get_sync_package(dep)
+                pkg = self.db_man.get_sync_package(dep)
                 if pkg is None:
                     raise SystemError(
                         "Could not find the package anywhere: {0}".format(dep))
@@ -388,12 +389,12 @@ class System(object):
 
     def get_local_packages(self):
         """Get all local installed packages"""
-        return self.session.db_man["local"].get_packages()
+        return self.db_man["local"].get_packages()
 
     def get_unneeded_packages(self):
         """Get all packages, which have not been installed explicitly and are
         not a dependency from some other package."""
-        return set(pkg for pkg in self.session.db_man.get_local_packages() \
+        return set(pkg for pkg in self.db_man.get_local_packages() \
                    if self._is_package_unneeded(pkg.name))
 
     def search_packages(self, pkgname):
@@ -403,7 +404,7 @@ class System(object):
         :param pkgname: the query which should be searched for"""
         query = {"name": pkgname.lower(), "desc": pkgname.lower()}
         return sorted(
-            self.session.db_man.search_sync_package(**query),
+            self.db_man.search_sync_package(**query),
             key=lambda p: (p.repo, p.name)
         )
 
@@ -411,7 +412,7 @@ class System(object):
         """Return a full list of all files inside a local package.
 
         :param pkgname: the package to inspect"""
-        pkg = self.session.db_man.get_local_package(pkgname)
+        pkg = self.db_man.get_local_package(pkgname)
         if pkg:
             return pkg.files
 
