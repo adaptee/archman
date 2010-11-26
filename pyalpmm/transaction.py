@@ -326,7 +326,7 @@ class UpgradeTransaction(Transaction):
             self.handle_error(p.get_errno())
 
 
-class SysUpgradeTransaction(SyncTransaction):
+class SysUpgradeTransaction(Transaction):
     """The SysUpgradeTransaction upgrades the whole system with the latest
     available packages.
     """
@@ -345,7 +345,7 @@ class SysUpgradeTransaction(SyncTransaction):
             self.handle_error(p.get_errno())
         super(SysUpgradeTransaction, self).prepare()
 
-class DatabaseUpdateTransaction(SyncTransaction):
+class DatabaseUpdateTransaction(Transaction):
     """Update all (or just the passed) databases"""
     trans_type = "update"
 
