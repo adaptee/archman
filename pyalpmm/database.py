@@ -398,6 +398,25 @@ class DatabaseManager(object):
         # [Example]  '3.2.9-2'  >  '3.2.10-3'
         return sync_pkg.version > local_pkg.version
 
+    def get_repo_package(self, pkgname, raise_ambiguous=False):
+        "silimar to get_sync_package, only differecen is not include AUR"
+
+        keys = self.sync_dbs.keys()
+        if "aur" in keys:
+            keys = keys.remove( "aur")
+
+        return self.get_package(
+            pkgname,
+            repos=keys,
+            raise_ambiguous=raise_ambiguous
+        )
+
+    def get_aur_package(self, pkgname, raise_ambiguous=False):
+        return self.get_package(
+            pkgname,
+            repos=["aur"],
+            raise_ambiguous=raise_ambiguous
+        )
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""
