@@ -179,6 +179,8 @@ class System(object):
         finally:
             self.transaction_active = False
 
+    # FIXME; do to much work;
+    # should be simplistic.
     def _is_package_installed(self, pkgname):
         """Check if the given package defined by `pkgname` is
         installed and up to date
@@ -280,6 +282,7 @@ class System(object):
                 raise SystemError("The file: {0} does not exist!".format(item))
 
             pkgname = "-".join(os.path.basename(item).split("-")[:-3])
+            # FIXME ; logic error; should pass into 'pkgname-version'
             pkg = self._is_package_installed(pkgname)
             if pkg:
                 self.events.ReInstallingPackage(pkg=pkg)
