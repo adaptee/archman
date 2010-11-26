@@ -401,13 +401,14 @@ class DatabaseManager(object):
     def get_repo_package(self, pkgname, raise_ambiguous=False):
         "silimar to get_sync_package, only differecen is not include AUR"
 
-        keys = self.sync_dbs.keys()
+        repos = self.sync_dbs.keys()
+
         if "aur" in keys:
-            keys = keys.remove( "aur")
+            repos.remove( "aur")
 
         return self.get_package(
             pkgname,
-            repos=keys,
+            repos=repos,
             raise_ambiguous=raise_ambiguous
         )
 

@@ -302,34 +302,46 @@ class System(object):
         c = self.session.config
 
         # throwing "ReInstallingPackage" Event if target already in sync
-        for item in targets:
-            pkg = self._is_package_installed(item)
-            if pkg :
-                self.events.ReInstallingPackage(pkg=pkg)
+        #for item in targets:
+            #pkg = self._is_package_installed(item)
+            #if pkg :
+                #self.events.ReInstallingPackage(pkg=pkg)
 
-        # starting transaction, with special-handler for not found targets
-        not_found_targets = \
-            self._handle_transaction(SyncTransaction, True, targets=targets)
+        ## starting transaction, with special-handler for not found targets
+        #not_found_targets = \
+            #self._handle_transaction(SyncTransaction, True, targets=targets)
 
-        # if no return, and we reach this point, means no exception was thrown
-        # the transaction was succesfully finished
-        if not_found_targets is None:
-            return
+        ## if no return, and we reach this point, means no exception was thrown
+        ## the transaction was succesfully finished
+        #if not_found_targets is None:
+            #return
 
 
-        pkgs_map = { k:self.get_sync_package(k, raise_ambiguous=True)
-                     for k in not_found_targets
+        #pkgs_map = { k:self.get_sync_package(k, raise_ambiguous=True)
+                     #for k in not_found_targets
+                   #}
+
+
+        #if any(v is None for v in pkgs_map.values()):
+            #self.events.PackageNotFound(e=NotFoundError(
+                #"Following targets could be found in the repos: {0}". \
+                #format(",".join(k for k, v in pkgs_map.items() if v is None))))
+            #return
+
+        #stack = [pkg for pkg in pkgs_map.values() if pkg.repo == "aur"]
+        #aur_targets = [k for k, v in pkgs_map.items() if v.repo == "aur"]
+        #targets = [tar for tar in targets if tar not in aur_targets]
+
+        pkgs_map = { target:self.db_man.get_repo_package(target, raise_ambiguous=True)
+                     for target in targets
                    }
 
-        if any(v is None for v in pkgs_map.values()):
-            self.events.PackageNotFound(e=NotFoundError(
-                "Following targets could be found in the repos: {0}". \
-                format(",".join(k for k, v in pkgs_map.items() if v is None))))
-            return
+        repo_targets = [ k for k, v in pkgs_map.items() if v     ]
+        aur_targets =  [ k for k, v in pkgs_map.items() if not v ]
 
-        stack = [pkg for pkg in pkgs_map.values() if pkg.repo == "aur"]
-        aur_targets = [k for k, v in pkgs_map.items() if v.repo == "aur"]
-        targets = [tar for tar in targets if tar not in aur_targets]
+        print pkgs_map.items()
+        print repo_targets
+        print aur_targets
 
         while len(stack) > 0:
             pkg = stack.pop()
