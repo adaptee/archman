@@ -187,7 +187,7 @@ elif options.query:
         reason_sign = "-x-" if pkg.reason == p.PM_PKG_REASON_EXPLICIT else ""
 
         if options.aur:
-            if not system.get_package(pkg.name, repos=config.repos):
+            if not system.db_man.get_package(pkg.name, repos=config.repos):
                 aur_pkgs.add(pkg)
                 aur_sign = "-x-"
             else:
