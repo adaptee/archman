@@ -473,8 +473,3 @@ class AURTransaction(object):
         return { "add"    : [self.pkg],
                  "remove" : [],
                }
-
-    def add_target(self, pkgname):
-        pass
-
-
