@@ -106,23 +106,23 @@ class Package(object):
     For more information about these attributes see :manpage:`PKGBUILD(5)`.
 
     """
-    def __init__(self, pkgfile):
+    def __init__(self):
         super(Package, self).__init__()
-        self.name = ""
+        self.name    = ""
         self.version = ""
         self.release = ""
-        self.desc = ""
-        self.url = ""
-        self.arch = []
-        self.licenses = []
-        self.groups = []
-        self.provides = []
-        self.depends = []
+        self.desc    = ""
+        self.url     = ""
+        self.arch       = []
+        self.licenses   = []
+        self.groups     = []
+        self.provides   = []
+        self.depends    = []
         self.optdepends = []
-        self.conflicts = []
-        self.replaces = []
-        self.options = []
-        self.backup = []
+        self.conflicts  = []
+        self.replaces   = []
+        self.options    = []
+        self.backup     = []
 
 
 class PKGBUILD(Package):
@@ -190,7 +190,7 @@ class PKGBUILD(Package):
     _symbol_regex = re.compile(r"\$(?P<name>{[\w\d_]+}|[\w\d]+)")
 
     def __init__(self, name=None, fileobj=None):
-        super(PKGBUILD, self).__init__(fileobj)
+        super(PKGBUILD, self).__init__()
         self.install = ""
         self.checksums = {
             'md5': [],
@@ -199,8 +199,8 @@ class PKGBUILD(Package):
             'sha384': [],
             'sha512': [],
         }
-        self.noextract = []
-        self.sources = []
+        self.noextract   = []
+        self.sources     = []
         self.makedepends = []
 
         # Symbol lookup table
@@ -224,11 +224,15 @@ class PKGBUILD(Package):
 
         if not name and not fileobj:
             raise ValueError("nothing to open")
+
         should_close = False
         if not fileobj:
             fileobj = open(name, "r")
             should_close = True
+
+        # do the realy work!
         self._parse(fileobj)
+
         if should_close:
             fileobj.close()
 
@@ -242,24 +246,33 @@ class PKGBUILD(Package):
 
     def _parse(self, fileobj):
         """Parse PKGBUILD"""
+
         if hasattr(fileobj, "seek"):
             fileobj.seek(0)
+
         parser = shlex.shlex(fileobj, posix=True)
         parser.whitespace_split = True
+
         in_function = False
+        in_array    = False
+
         while 1:
             token = parser.get_token()
+
             if token is None or token == '':
                 break
+
             # Skip escaped newlines and functions
             if token == '\n' or in_function:
                 continue
+
             # Special case:
             # Array elements are dispersed among tokens, we have to join
             # them first
-            if token.find("=(") >= 0 and not token.rfind(")") >= 0:
+            if token.find( "=(" ) >= 0 and not token.rfind( ")" ) >= 0:
                 in_array = True
                 elements = []
+
                 while in_array:
                     _token = parser.get_token()
                     if _token == '\n':
@@ -271,16 +284,20 @@ class PKGBUILD(Package):
                         in_array = False
                     else:
                         elements.append('"%s"' % _token.strip())
+
             # Assignment
             if re.match(r"^[\w\d_]+=", token):
                 self._handle_assign(token)
+
             # Function definitions
             elif token == '{':
                 in_function = True
             elif token == '}' and in_function:
                 in_function = False
+
         self._substitute()
         self._assign_local()
+
         if self.release:
             try:
                 self.release = float(self.release)
