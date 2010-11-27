@@ -12,53 +12,56 @@ API.
 
 """
 
+import re
 from itertools import chain
-
 
 import pyalpmm_raw as p
 from item import PackageItem
 from lists import PackageList, GroupList, AURPackageList
 from tools import CriticalError, CachedProperty
 
-def parse_pkgname(name):
 
+def pickout_repo(notation):
     # leading "/" is invalid
-    if name.startswith('/'):
+    if notation.startswith('/'):
         raise DatabaseError(
-            "The passed 'pkgname' started with a '/', which is invalid."
+            "The passed 'notation' started with a '/', which is invalid."
         )
 
-    # support the notaion of repo/name-version
-    if "/" in name:
-        parts = name.split("/")
+    if "/" in notation:
+        parts = notation.split("/")
         if len(parts) > 2:
             raise DatabaseError(
-                "The given `pkgname` was not correctly formated: '{0}'". \
-                format(name)
+                "The given `notation` was not correctly formated: '{0}'". \
+                format(notation)
             )
 
-        repo    = parts[0]
-        pkgname = parts[1]
+        repo = parts[0]
+        rest = parts[1]
     else:
-        repo    = None
-        pkgname = name
+        repo = None
+        rest = notation
 
-    return repo, pkgname
+    return repo, rest
 
-    # extra support for repo/name-version
-    # FIXME; buggy
-    ## now deal with name and version
-    #parts = non_repo_part.split('-')
+def pickout_name_version(notation):
+    name    = r'([-a-zA-Z]+)'
+    op      = r'(<=|>=|<|>|=)?'     # optional
+    version = r'([-0-9.]+)?'        # optional
+    pattern = name + op + version
 
-    #if len(parts) >= 3 :
-        ## example: ktorrent-4.0.4-1
-        #pkgver  = '-'.join( parts[-2:] )
-        #pkgname = '-'.join( parts[:-2] )
-    #else:
-        ## example: ktorrent
-        #pkgver = ""
-        #pkgname = '-'.join(parts)
-    #return repo, pkgname, pkgver
+    match   = re.match(pattern, notation)
+    return match.groups()
+
+# [example] testing/kernel26>=2.6.35
+# return ('testing', 'kernel26', '2.6.35', ">=")
+def parse_package_notation(notation):
+
+    repo, rest = pickout_repo(notation)
+    name, op, version = pickout_name_version(rest)
+
+    return repo, name, op, version
+
 
 class DatabaseError(CriticalError):
     pass
@@ -277,7 +280,7 @@ class DatabaseManager(object):
 
     # TODO
     # support more precise lookup, e.g, support 'extra/ktorrent-4.0.4-1'
-    def get_package(self, pkgname, repos=None, raise_ambiguous=False):
+    def get_package(self, notation, repos=None, raise_ambiguous=False):
         """Return package either for sync or for local repo
 
         You can either give the package name in the full repo notation,
@@ -289,16 +292,16 @@ class DatabaseManager(object):
         If `repos` contains a not known repository, throw a
         :class:`DatabaseError`
 
-        :param pkgname: the package name to look for
+        :param notation: the package notation to look for
         :param repos: a list of the repositiory names, which will be used to
                       search the package name inside (optional)
         :param raise_ambiguous: if True, will raise :class:`DatabaseError` if
                                 there is more than one hit, if False, just
                                 return the first hit (optional)
         """
-        repo, pkgname = parse_pkgname(pkgname)
+        repo, pkgname, op, version = parse_package_notation(notation)
 
-        # repo/name overwrite the 'repos' parameter
+        # repo obtained from notation overwrite 'repos' parameter
         if repo:
             repos = [repo]
 
