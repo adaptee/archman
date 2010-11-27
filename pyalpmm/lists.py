@@ -150,7 +150,7 @@ class GroupList(LazyList):
         """
         kw = self._parse_keywords(kw)
         return (grp for grp in self \
-                if any(op(v, grp.get_info(k)) for k, (v, op) in kw.items()))
+                if all(op(v, grp.get_info(k)) for k, (v, op) in kw.items()))
 
     def order_by(self, k):
         """Return the :class:`GroupItem` instances ordered
@@ -205,7 +205,7 @@ class PackageList(LazyList):
 
         res = set()
         for pkg in self:
-            if any(op(v, pkg.get_info(k) or "") \
+            if all(op(v, pkg.get_info(k) or "") \
                    for k, (v, op) in kw.items()):
                 res.add(pkg)
         return list(res)
@@ -275,7 +275,7 @@ class AURPackageList(PackageList):
 
         res = set()
         for pkg in candicates:
-            if any(op(v, pkg.get_info(k) or "") \
+            if all(op(v, pkg.get_info(k) or "") \
                    for k, (v, op) in kw.items()):
                 res.add(pkg)
 
@@ -292,7 +292,7 @@ class AURPackageList(PackageList):
         out = []
         for pkg in candidates:
             pkg.repo = "aur"
-            if any(op(v, pkg.get_info(k)) for k, (v, op) in kw.items()):
+            if all(op(v, pkg.get_info(k)) for k, (v, op) in kw.items()):
                 out.append(pkg)
 
         return out
