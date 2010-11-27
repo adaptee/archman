@@ -125,24 +125,6 @@ class DatabaseManager(object):
             dbs.append(self[dbname])
         return dbs
 
-    def _handle_result(self, result, raise_ambiguous):
-        """Handle/PostProcess database result
-
-        :param result: the result(set/list) from the database query
-        :param raise_ambiguous: silently give first hit if set to True if not
-                                raise :class:`DatabaseError`
-        """
-        if (len(result) == 1) or (raise_ambiguous is False and len(result) > 1):
-            return result.pop()
-        elif len(result) == 0:
-            return None
-
-        raise DatabaseError(
-            ("Found multiple hits with the same query: '{0}'. "
-             "Be sure to set the `raise_ambiguous` keyword to `False`, "
-             "if you don't want to see this exception occur").format(result)
-        )
-
     def register(self, tree, db):
         """Register a new database to the libalpm backend
 
