@@ -231,7 +231,7 @@ class DatabaseManager(object):
 
         :param kw: the search query
         """
-        return self.search_package(repos=self.dbs["aur"], **kw)
+        return self.search_package(repos=["aur"], **kw)
 
     def get_packages(self, repos=None):
         """Get all packages from all databases, actually returns an iterator
@@ -369,20 +369,12 @@ class DatabaseManager(object):
         p.alpm_db_set_pkgreason(self.dbs["local"], pkg.name, reason_id)
 
     # new-added
-    @CachedProperty
-    def local_packages(self):
-        return self.get_local_packages()
-
-    @CachedProperty
-    def sync_packages(self):
-        return self.get_sync_packages()
 
     def generate_cache(self):
         "cache result to avoid expensive IO operation"
-        self.local_pkgs_map = { pkg.name : pkg for pkg in self.get_local_packages() }
-        #self.repo_pkgs_map  = { pkg.name : pkg for pkg in self.get_sync_packages()  }
-        #print self.local_pkgs_map.keys()
-        #print len( self.local_pkgs_map.keys() )
+        #self.local_pkgs_map = { pkg.name : pkg for pkg in self.get_local_packages() }
+        #self.repo_pkgs_map  = { pkg.name : pkg for pkg in self.get_repo_packages()  }
+        pass
 
     def is_package_installed(self, pkgname):
         pkg = self.get_local_package(pkgname)
@@ -395,11 +387,16 @@ class DatabaseManager(object):
         # [Example]  '3.2.9-2'  >  '3.2.10-3'
         return sync_pkg.version > local_pkg.version
 
+    def get_aur_package(self, pkgname, raise_ambiguous=False):
+        return self.get_package(
+            pkgname,
+            repos=["aur"],
+            raise_ambiguous=raise_ambiguous
+        )
+
     def get_repo_package(self, pkgname, raise_ambiguous=False):
         "silimar to get_sync_package, only differecen is not include AUR"
-
         repos = self.sync_dbs.keys()
-
         if "aur" in repos:
             repos.remove( "aur")
 
@@ -409,12 +406,22 @@ class DatabaseManager(object):
             raise_ambiguous=raise_ambiguous
         )
 
-    def get_aur_package(self, pkgname, raise_ambiguous=False):
-        return self.get_package(
-            pkgname,
-            repos=["aur"],
-            raise_ambiguous=raise_ambiguous
-        )
+    def get_repo_packages(self):
+        """Similar to get_sync_package(), only difference is not include AUR"""
+        repos = self.sync_dbs.keys()
+        if "aur" in repos:
+            repos.remove( "aur")
+
+        return self.get_packages(repos)
+
+    @CachedProperty
+    def local_packages(self):
+        return self.get_local_packages()
+
+    @CachedProperty
+    def repo_packages(self):
+        return self.get_repo_packages()
+
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""
