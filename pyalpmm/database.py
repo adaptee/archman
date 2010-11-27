@@ -307,8 +307,6 @@ class DatabaseManager(object):
         if op and version :
             keywords["version__%s" % op] = version
 
-        print keywords
-
         # repo obtained from notation overwrite 'repos' parameter
         if repo:
             repos = [repo]
