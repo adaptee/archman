@@ -193,8 +193,9 @@ class PackageList(LazyList):
         :param kw: keyword arguments with the actual query,
                    magic endings are supported
         """
-        res = set()
         kw = self._parse_keywords(kw)
+
+        res = set()
         for pkg in self:
             if any(op(v, pkg.get_info(k) or "") \
                    for k, (v, op) in kw.items()):
@@ -240,6 +241,8 @@ class AURPackageList(PackageList):
 
         :param kw: the search query as a dict
         """
+        kw = self._parse_keywords(kw)
+
         return self._aur_query( "search", **kw)
 
     def info(self, **kw):
@@ -257,7 +260,6 @@ class AURPackageList(PackageList):
 
     def _aur_query(self, method, **kw):
         """Query AUR and filter replyies ."""
-        kw = self._parse_keywords(kw)
 
         query   = { "type": method, "arg": kw["name"][0] }
         results = self._aur_rpc(**query)
