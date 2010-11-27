@@ -278,8 +278,6 @@ class DatabaseManager(object):
     #                                 get_sync_group(name)
 
 
-    # TODO
-    # support more precise lookup, e.g, support 'extra/ktorrent-4.0.4-1'
     def get_package(self, notation, repos=None, raise_ambiguous=False):
         """Return package either for sync or for local repo
 
@@ -301,31 +299,37 @@ class DatabaseManager(object):
         """
         repo, pkgname, op, version = parse_package_notation(notation)
 
-
         keywords = { }
         keywords["name__eq"] = pkgname.lower()
         if op and version :
             keywords["version__%s" % op] = version
 
         # repo obtained from notation overwrite 'repos' parameter
-        if repo:
-            repos = [repo]
+        if repo:  repos = [repo]
 
         repos = self._get_repositories(repos or self.dbs.keys())
 
-        found = []
-        for repo in repos:
-            for pkg in repo.get_package(**keywords):
-                pkg.repo = repo.tree
-                found.append(pkg)
+        found = [ ]
 
         try:
-            return self._handle_result(found, raise_ambiguous)
-        except DatabaseError as e:
-            e.format("name__eq={0}".format(pkgname))
-            raise e
+            for repo in repos:
+                for pkg in repo.get_package(**keywords):
+                    pkg.repo = repo.tree
+                    found.append(pkg)
 
-    def get_local_package(self, pkgname, raise_ambiguous=False):
+                    if len(found) > 1 and raise_ambiguous :
+                        raise DatabaseError("")
+        except DatabaseError :
+            raise DatabaseError(
+                ("Found multiple hits with the same query: '{0}'. "
+                "Be sure to set the `raise_ambiguous` keyword to `False`, "
+                "if you don't want to see this exception occur").format(found)
+            )
+
+        return found[0] if found else None
+
+
+    def get_local_package(self, pkgname, raise_ambiguous=True):
         """Get info about one package `pkgname`, from the local repository
 
         :param pkgname: the package name to look for
@@ -396,7 +400,7 @@ class DatabaseManager(object):
         # [Example]  '3.2.9-2'  >  '3.2.10-3'
         return sync_pkg.version > local_pkg.version
 
-    def get_aur_package(self, pkgname, raise_ambiguous=False):
+    def get_aur_package(self, pkgname, raise_ambiguous=True):
         return self.get_package(
             pkgname,
             repos=["aur"],
