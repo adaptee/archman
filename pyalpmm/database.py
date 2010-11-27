@@ -315,7 +315,6 @@ class DatabaseManager(object):
 
         found = []
         for repo in repos:
-            #for pkg in repo.get_package(pkgname):
             for pkg in repo.get_package2(**keywords):
                 pkg.repo = repo.tree
                 found.append(pkg)
@@ -445,11 +444,6 @@ class AbstractDatabase(object):
         """Get all available packages in this database"""
         return PackageList(p.alpm_db_get_pkgcache(self.db))
 
-    def get_package(self, pkgname, raise_ambiguous=False):
-        """Get specific package with exact name in this database"""
-        keywords = {"name__eq": pkgname.lower()}
-        return self.get_packages().search(**keywords)
-
     def get_package2(self, **kw):
         """Get specific package with exact name in this database"""
         return self.get_packages().search(**kw)
@@ -501,10 +495,6 @@ class AURDatabase(SyncDatabase):
     def get_groups(self):
         """There are no groups in AUR, so just returns an empty list"""
         return []
-
-    def get_package(self, pkgname, raise_ambiguous=False):
-        """efficient way of obtaining info of one specific package on AUR"""
-        return AURPackageList(self.config).get_package(pkgname)
 
     def get_package2(self, **kw):
         """efficient way of obtaining info of one specific package on AUR"""

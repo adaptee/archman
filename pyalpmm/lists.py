@@ -262,10 +262,6 @@ class AURPackageList(PackageList):
         """
         return self._aur_query( "info", **kw)
 
-    def get_package(self, pkgname):
-        # always return a list
-        return [self.create_detail_item(pkgname) ]
-
     def get_package2(self, **kw):
         # always return a list
         kw = self._parse_keywords(kw)
