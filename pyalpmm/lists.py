@@ -124,152 +124,6 @@ class DependencyList(LazyList):
             ", ".join(s.name for s in self)
         )
 
-class PackageList(LazyList):
-    """Holds PackageItem objects"""
-
-    def create_item(self, raw_data):
-        """Creates a PackageItem from the passed raw_data"""
-        return Item.PackageItem(raw_data)
-
-    def search(self, **kw):
-        """This search checks if the given query `kw` matches one of the
-        :class:`PackageItem` instances kept by the list. Each object is checked,
-        wheater its attributes match the keys and the attribute-values the
-        values from the kwargs dict.
-
-        :param kw: keyword arguments with the actual query,
-                   magic endings are supported
-        """
-        res = set()
-        kw = self._parse_keywords(kw)
-        for pkg in self:
-            if any(op(v, pkg.get_info(k) or "") \
-                   for k, (v, op) in kw.items()):
-                res.add(pkg)
-        return list(res)
-
-    # this method looks a bit obsolete/unused... hmmm
-    def order_by(self, k):
-        """Yield the list contents in an order defined by the passed key `k`
-
-        :param k: the key-column, which should be used to order the output
-        """
-        lst = [(v.get_info(k), v) for v in self]
-        heapq.heapify(lst)
-        pop = heapq.heappop
-        while lst:
-            yield pop(lst)[1]
-
-class AURPackageList(PackageList):
-    """Holds evil AURPackageItem objects.
-    This class implements a full blown wrapper to work with AURPackages as
-    easy as with any other "official" package repository. Data is acquired
-    through RPC.
-
-    :param config: a :class:`pyalpmm.options.PyALPMMConfiguration` instance
-    """
-    _package_database_cache = None
-    _package_list_pattern = re.compile(r'a href\=\"([^\"]+)\"')
-    def __init__(self, config):
-        self.config = config
-
-    #def __len__(self):
-        #return len(self.package_database)
-
-    #def __getitem__(self, i):
-        #return self.create_item({"Name": self.package_database[i],
-                                 #"Version": "(aur)"})
-
-    # iterating this does not make sense
-    def __iter__(self):
-        yield None
-
-    def search(self, **kw):
-        """Search for a package with an RPC call to the AUR repository
-        We won't handle any kind of suffix in the kw keys like in PackageList
-        I see no real sense in this, as long as AUR and the regular repos not
-        even have the same naming scheme
-
-        :param kw: the search query as a dict
-        """
-        return self._aur_query( "search", **kw)
-
-    def info(self, **kw):
-        """Similar to search(), but use 'info' method in RPC call.
-           That means querying package with exact name, which should return
-           only one entry, or error.
-
-        :param kw: the search query as a dict
-        """
-        return self._aur_query( "info", **kw)
-
-    def _aur_query(self, method, **kw):
-        """Query AUR and filter replyies ."""
-        kw = self._parse_keywords(kw)
-
-        query   = { "type": method, "arg": kw["name"][0] }
-        results = self._aur_rpc(**query)
-
-        candidates = [self.create_item(result) for result in results]
-
-        out = []
-        for pkg in candidates:
-            pkg.repo = "aur"
-            if any(op(v, pkg.get_info(k)) for k, (v, op) in kw.items()):
-                out.append(pkg)
-
-        return out
-
-    def _aur_rpc(self, **query):
-        """Simple wrapper for low level AUR RPC communication."""
-        rpc_url = self.config.aur_url + self.config.rpc_command
-        rpc_url_full = rpc_url % query
-
-        # FIXME; temporary replacement for simplejson
-        results = eval( urllib.urlopen(rpc_url_full).read() )["results"]
-
-        if isinstance(results, str):
-            return []
-        if type(results) == list:
-            return sorted( results, key = lambda x : x["Name"] )
-        else:
-            # always return a list
-            return [results]
-
-
-        # FIXME; simplejson is better than eval, but it always return unicode
-        # which is not compatible with item.attribute framework now
-        jsondata = urllib.urlopen(rpc_url_full).read()
-        reply    = JSON.loads(jsondata)
-
-        if reply["type"] == "error" :
-            # alwasy return a list
-            return [ ]
-
-        results = reply["results"]
-
-        if type(results) == list:
-            return sorted( results, key = lambda x : x["Name"] )
-        else:
-            # always return a list
-            return [results]
-
-
-    def create_item(self, dct):
-        """Create a AURPackageItem from a given input `dct`
-
-        :param dct: the dictionary which holds all the retrieved package data
-        """
-
-        if self.config.parse_pkgbuild :
-            c = self.config
-            url = c.aur_url + c.aur_pkg_dir + dct["Name"] + "/" + \
-                dct["Name"] + "/" + "PKGBUILD"
-
-            fileobj = StringIO( urllib.urlopen(url).read() )
-            return Item.PkgbuildPackageItem(fileobj)
-        else:
-            return Item.AURPackageItem(dct)
 
 class GroupList(LazyList):
     """A list for GroupItems"""
@@ -322,3 +176,149 @@ class StringList(LazyList):
             if what in s:
                 return True
         return False
+
+class PackageList(LazyList):
+    """Holds PackageItem objects"""
+
+    def create_item(self, raw_data):
+        """Creates a PackageItem from the passed raw_data"""
+        return Item.PackageItem(raw_data)
+
+    def search(self, **kw):
+        """This search checks if the given query `kw` matches one of the
+        :class:`PackageItem` instances kept by the list. Each object is checked,
+        wheater its attributes match the keys and the attribute-values the
+        values from the kwargs dict.
+
+        :param kw: keyword arguments with the actual query,
+                   magic endings are supported
+        """
+        res = set()
+        kw = self._parse_keywords(kw)
+        for pkg in self:
+            if any(op(v, pkg.get_info(k) or "") \
+                   for k, (v, op) in kw.items()):
+                res.add(pkg)
+        return list(res)
+
+    # this method looks a bit obsolete/unused... hmmm
+    def order_by(self, k):
+        """Yield the list contents in an order defined by the passed key `k`
+
+        :param k: the key-column, which should be used to order the output
+        """
+        lst = [(v.get_info(k), v) for v in self]
+        heapq.heapify(lst)
+        pop = heapq.heappop
+        while lst:
+            yield pop(lst)[1]
+
+class AURPackageList(PackageList):
+    """Holds evil AURPackageItem objects.
+    This class implements a full blown wrapper to work with AURPackages as
+    easy as with any other "official" package repository. Data is acquired
+    through RPC.
+
+    :param config: a :class:`pyalpmm.options.PyALPMMConfiguration` instance
+    """
+
+    def __init__(self, config):
+        self.config = config
+
+    def __getitem__(self, i):
+        raise  Exception( "AURPackageList does not support accessing by index")
+
+    # iterating this does not make sense
+    def __iter__(self):
+        yield [ ]
+
+    def search(self, **kw):
+        """Search for a package with an RPC call to the AUR repository
+        We won't handle any kind of suffix in the kw keys like in PackageList
+        I see no real sense in this, as long as AUR and the regular repos not
+        even have the same naming scheme
+
+        :param kw: the search query as a dict
+        """
+        return self._aur_query( "search", **kw)
+
+    def info(self, **kw):
+        """Similar to search(), but use 'info' method in RPC call.
+           That means querying package with exact name, which should return
+           only one entry, or error.
+
+        :param kw: the search query as a dict
+        """
+        return self._aur_query( "info", **kw)
+
+    def get_package(self, pkgname):
+        # always return a list
+        return [self.create_detail_item(pkgname) ]
+
+    def _aur_query(self, method, **kw):
+        """Query AUR and filter replyies ."""
+        kw = self._parse_keywords(kw)
+
+        query   = { "type": method, "arg": kw["name"][0] }
+        results = self._aur_rpc(**query)
+
+        candidates = [self.create_simple_item(result) for result in results]
+
+        out = []
+        for pkg in candidates:
+            pkg.repo = "aur"
+            if any(op(v, pkg.get_info(k)) for k, (v, op) in kw.items()):
+                out.append(pkg)
+
+        return out
+
+    def _aur_rpc(self, **query):
+        """Simple wrapper for low level AUR RPC communication."""
+        rpc_url = self.config.aur_url + self.config.rpc_command
+        rpc_url_full = rpc_url % query
+
+        # FIXME; temporary replacement for simplejson
+        results = eval( urllib.urlopen(rpc_url_full).read() )["results"]
+
+        if isinstance(results, str):
+            return []
+        if type(results) == list:
+            return sorted( results, key = lambda x : x["Name"] )
+        else:
+            # always return a list
+            return [results]
+
+        # FIXME; simplejson is better than eval, but it always return unicode
+        # which is not compatible with item.attribute framework now
+        jsondata = urllib.urlopen(rpc_url_full).read()
+        reply    = JSON.loads(jsondata)
+
+        if reply["type"] == "error" :
+            # alwasy return a list
+            return [ ]
+
+        results = reply["results"]
+
+        if type(results) == list:
+            return sorted( results, key = lambda x : x["Name"] )
+        else:
+            # always return a list
+            return [results]
+
+
+    def create_simple_item(self, dct):
+        """Create a AURPackageItem from a given input `dct`
+
+        :param dct: the dictionary which holds all the retrieved package data
+        """
+        return Item.AURPackageItem(dct)
+
+    def create_detail_item(self, pkgname):
+        #if self.config.parse_pkgbuild :
+        c = self.config
+        url = c.aur_url + c.aur_pkg_dir + pkgname + "/" + \
+            pkgname + "/" + "PKGBUILD"
+
+        # FIXME ; this operation may throw exception
+        fileobj = StringIO( urllib.urlopen(url).read() )
+        return Item.PkgbuildPackageItem(fileobj)

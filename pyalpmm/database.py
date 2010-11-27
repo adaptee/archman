@@ -498,9 +498,7 @@ class AURDatabase(SyncDatabase):
 
     def get_package(self, pkgname, raise_ambiguous=False):
         """efficient way of obtaining info of one specific package on AUR"""
-
-        keywords = {"name__eq": pkgname.lower() }
-        return AURPackageList(self.config).info(**keywords)
+        return AURPackageList(self.config).get_package(pkgname)
 
     def update(self, force=None):
         """There is no need to update because we always send an RPC request"""
