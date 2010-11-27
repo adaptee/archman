@@ -446,7 +446,7 @@ class AbstractDatabase(object):
 
     def get_package(self, **kw):
         """Get specific package with exact name in this database"""
-        return self.get_packages().search(**kw)
+        return self.get_packages().get_package(**kw)
 
     def get_groups(self):
         """Get all available groups in this database"""
@@ -498,7 +498,7 @@ class AURDatabase(SyncDatabase):
 
     def get_package(self, **kw):
         """efficient way of obtaining info of one specific package on AUR"""
-        return AURPackageList(self.config).get_package(**kw)
+        return self.get_packages().get_package(**kw)
 
     def get_groups(self):
         """There are no groups in AUR, so just returns an empty list"""

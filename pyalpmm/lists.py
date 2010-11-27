@@ -193,11 +193,17 @@ class PackageList(LazyList):
         return Item.PackageItem(raw_data)
 
     def search(self, **kw):
-        """This search checks if the given query `kw` matches one of the
-        :class:`PackageItem` instances kept by the list. Each object is checked,
-        wheater its attributes match the keys and the attribute-values the
-        values from the kwargs dict.
+        """ return all packages matching specifed query """
+        return self._do_search(any, **kw)
 
+    def get_package(self, **kw):
+        """ get one package matching specifed query """
+        return self._do_search(all, **kw)
+
+    def _do_search(self, combinator, **kw):
+        """ do the real hard work
+
+        :param combinator: any or all
         :param kw: keyword arguments with the actual query,
                    magic endings are supported
         """
@@ -205,10 +211,12 @@ class PackageList(LazyList):
 
         res = set()
         for pkg in self:
-            if any(op(v, pkg.get_info(k) or "") \
-                   for k, (v, op) in kw.items()):
+            if combinator( op(v, pkg.get_info(k) or "")
+                          for k, (v, op) in kw.items() ):
                 res.add(pkg)
+
         return list(res)
+
 
     # this method looks a bit obsolete/unused... hmmm
     def order_by(self, k):
