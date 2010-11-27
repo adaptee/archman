@@ -436,13 +436,13 @@ class AbstractDatabase(object):
                 return True
         return False
 
-    def search_package(self, **kw):
-        """Search this database for a given query"""
-        return self.get_packages().search(**kw)
-
     def get_packages(self):
         """Get all available packages in this database"""
         return PackageList(p.alpm_db_get_pkgcache(self.db))
+
+    def search_package(self, **kw):
+        """Search this database for a given query"""
+        return self.get_packages().search(**kw)
 
     def get_package(self, **kw):
         """Get specific package with exact name in this database"""
