@@ -488,18 +488,20 @@ class AURDatabase(SyncDatabase):
         self.config = config
         self.tree = "aur"
 
+    def update(self, force=None):
+        """There is no need to update because we always send an RPC request"""
+        return True
+
     def get_packages(self):
         """Just give the AURPackageList, which wrapps all queries"""
         return AURPackageList(self.config)
-
-    def get_groups(self):
-        """There are no groups in AUR, so just returns an empty list"""
-        return []
 
     def get_package(self, **kw):
         """efficient way of obtaining info of one specific package on AUR"""
         return AURPackageList(self.config).get_package(**kw)
 
-    def update(self, force=None):
-        """There is no need to update because we always send an RPC request"""
-        return True
+    def get_groups(self):
+        """There are no groups in AUR, so just returns an empty list"""
+        return []
+
+
