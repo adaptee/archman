@@ -262,7 +262,7 @@ class AURPackageList(PackageList):
         """
         return self._aur_query( "info", **kw)
 
-    def get_package2(self, **kw):
+    def get_package(self, **kw):
         # always return a list
         kw = self._parse_keywords(kw)
         pkgname = kw["name"][0]
