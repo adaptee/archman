@@ -261,25 +261,16 @@ class AURPackageList(PackageList):
 
         return self._aur_query( "search", **kw)
 
-    def info(self, **kw):
-        """Similar to search(), but use 'info' method in RPC call.
-           That means querying package with exact name, which should return
-           only one entry, or error.
-
-        :param kw: the search query as a dict
-        """
-        return self._aur_query( "info", **kw)
-
     def get_package(self, **kw):
-        # always return a list
         kw = self._parse_keywords(kw)
-        pkgname = kw["name"][0]
 
+        pkgname    = kw["name"][0]
         candicates = [self.create_detail_item(pkgname) ]
 
         res = set()
         for pkg in candicates:
-            if any(op(v, pkg.get_info(k) or "") \
+            pkg.repo = "aur"
+            if all(op(v, pkg.get_info(k) or "") \
                    for k, (v, op) in kw.items()):
                 res.add(pkg)
 
