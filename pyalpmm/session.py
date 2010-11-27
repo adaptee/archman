@@ -415,7 +415,6 @@ class System(object):
         """Update the package database indexes"""
         self.handle_transaction(DatabaseUpdateTransaction)
 
-
     def get_local_packages(self):
         """Get all local installed packages"""
         return self.db_man.get_local_packages()
@@ -468,6 +467,21 @@ class System(object):
         for pkg in self.get_local_packages():
             if pkg.files and filepath in pkg.files:
                 return pkg
+
+    # new-added
+    @CachedProperty
+    def local_packages(self):
+        #return list( self.db_man.get_local_packages() )
+        return {  pkg.name : pkg
+                  for pkg in self.db_man.get_local_packages()
+               }
+    # the staight-forward way
+    def is_package_installed(pkgname):
+        return True if self.get_local_package(pkgname) else False
+    # little subtle, but faster(?)
+    def is_package_installed(pkgname):
+        return True if self.local_packages.get(pkgname) else False
+
 
 def parse_pkg_filename(filename):
     """parse the filename of local pkgfile archive"""

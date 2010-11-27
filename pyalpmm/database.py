@@ -414,14 +414,6 @@ class DatabaseManager(object):
 
         return self.get_packages(repos)
 
-    @CachedProperty
-    def local_packages(self):
-        return self.get_local_packages()
-
-    @CachedProperty
-    def repo_packages(self):
-        return self.get_repo_packages()
-
 
 class AbstractDatabase(object):
     """Implements an abstract interface to one database"""
