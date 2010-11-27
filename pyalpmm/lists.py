@@ -269,7 +269,6 @@ class AURPackageList(PackageList):
 
         res = set()
         for pkg in candicates:
-            pkg.repo = "aur"
             if all(op(v, pkg.get_info(k) or "") \
                    for k, (v, op) in kw.items()):
                 res.add(pkg)
@@ -286,7 +285,6 @@ class AURPackageList(PackageList):
 
         out = []
         for pkg in candidates:
-            pkg.repo = "aur"
             if any(op(v, pkg.get_info(k)) for k, (v, op) in kw.items()):
                 out.append(pkg)
 
