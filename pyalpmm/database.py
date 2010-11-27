@@ -496,10 +496,6 @@ class AURDatabase(SyncDatabase):
         """Just give the AURPackageList, which wrapps all queries"""
         return AURPackageList(self.config)
 
-    def get_package(self, **kw):
-        """efficient way of obtaining info of one specific package on AUR"""
-        return self.get_packages().get_package(**kw)
-
     def get_groups(self):
         """There are no groups in AUR, so just returns an empty list"""
         return []
