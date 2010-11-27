@@ -143,13 +143,12 @@ elif options.query and options.info:
         print "[-] Sorry, haven't found a match for: {0}".format(args[0])
         sys.exit()
 
-    if options.info:
-        if options.show_files:
-            print "[+] Showing filelist of: {0}-{1}".format(args[0], pkg.version)
-            for fn in pkg.files:
-                print "[F] {0}".format(fn)
-        else:
-            print FancyPackage(pkg)
+    if options.show_files:
+        print "[+] Showing filelist of: {0}-{1}".format(args[0], pkg.version)
+        for fn in pkg.files:
+            print "[F] {0}".format(fn)
+    else:
+        print FancyPackage(pkg)
 
 elif options.query and options.orphan:
     print "[+] Starting 'orphan' package search"
