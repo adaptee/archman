@@ -14,7 +14,9 @@ API.
 
 from itertools import chain
 
+
 import pyalpmm_raw as p
+from item import PackageItem
 from lists import PackageList, GroupList, AURPackageList
 from tools import CriticalError, CachedProperty
 
