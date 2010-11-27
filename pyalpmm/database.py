@@ -301,6 +301,14 @@ class DatabaseManager(object):
         """
         repo, pkgname, op, version = parse_package_notation(notation)
 
+
+        keywords = { }
+        keywords["name__eq"] = pkgname.lower()
+        if op and version :
+            keywords["version__%s" % op] = version
+
+        print keywords
+
         # repo obtained from notation overwrite 'repos' parameter
         if repo:
             repos = [repo]
@@ -309,7 +317,8 @@ class DatabaseManager(object):
 
         found = []
         for repo in repos:
-            for pkg in repo.get_package(pkgname):
+            #for pkg in repo.get_package(pkgname):
+            for pkg in repo.get_package2(**keywords):
                 pkg.repo = repo.tree
                 found.append(pkg)
 
@@ -443,6 +452,10 @@ class AbstractDatabase(object):
         keywords = {"name__eq": pkgname.lower()}
         return self.get_packages().search(**keywords)
 
+    def get_package2(self, **kw):
+        """Get specific package with exact name in this database"""
+        return self.get_packages().search(**kw)
+
     def get_groups(self):
         """Get all available groups in this database"""
         return GroupList(p.alpm_db_get_grpcache(self.db))
@@ -494,6 +507,10 @@ class AURDatabase(SyncDatabase):
     def get_package(self, pkgname, raise_ambiguous=False):
         """efficient way of obtaining info of one specific package on AUR"""
         return AURPackageList(self.config).get_package(pkgname)
+
+    def get_package2(self, **kw):
+        """efficient way of obtaining info of one specific package on AUR"""
+        return AURPackageList(self.config).get_package2(**kw)
 
     def update(self, force=None):
         """There is no need to update because we always send an RPC request"""

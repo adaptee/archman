@@ -33,8 +33,16 @@ class LazyList(object):
 
     search_endings = {
         "__eq": ops.eq,
+        "__ne": ops.ne,
         "__in": lambda q, s: s.find(q) != -1,
-        "__ne": ops.ne
+        "__eq": ops.eq ,
+        "__ne": ops.ne ,
+        "__in": lambda q, s: s.find(q) != -1 ,
+        "__<" : lambda x, y: x < y  ,
+        "__>" : lambda x, y: x > y  ,
+        "__=" : lambda x, y: x == y ,
+        "__<=": lambda x, y: x <= y ,
+        "__>=": lambda x, y: x >= y ,
     }
 
     def __init__(self, raw_list):
@@ -257,6 +265,21 @@ class AURPackageList(PackageList):
     def get_package(self, pkgname):
         # always return a list
         return [self.create_detail_item(pkgname) ]
+
+    def get_package2(self, **kw):
+        # always return a list
+        kw = self._parse_keywords(kw)
+        pkgname = kw["name"][0]
+
+        candicates = [self.create_detail_item(pkgname) ]
+
+        res = set()
+        for pkg in candicates:
+            if any(op(v, pkg.get_info(k) or "") \
+                   for k, (v, op) in kw.items()):
+                res.add(pkg)
+
+        return list(res)
 
     def _aur_query(self, method, **kw):
         """Query AUR and filter replyies ."""
