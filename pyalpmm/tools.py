@@ -172,7 +172,7 @@ class AskUser(object):
     :param question: the question the user should be asked
     :param ansers: a list of possible answers (case-insensitive)
     """
-    def __init__(self, question, answers=["y","n"]):
+    def __init__(self, question, answers=("y","n") ):
         ans = ""
         while not ans.lower() in answers:
             sys.stdout.write(question)
